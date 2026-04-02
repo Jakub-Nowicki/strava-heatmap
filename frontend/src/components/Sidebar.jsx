@@ -95,7 +95,7 @@ export default function Sidebar({
   user, stats, cities, years,
   selectedCity, selectedYear,
   records, monthly,
-  onSelectCity, onSelectYear,
+  onSelectCity, onSelectYear, onLogout,
 }) {
   const totalKm   = stats?.total_km   ?? '—'
   const totalRuns = stats?.total_runs ?? '—'
@@ -120,7 +120,13 @@ export default function Sidebar({
         </div>
         <p className="logo-sub">Strava Heatmap</p>
         {user && (
-          <p className="user-name">{user.firstname} {user.lastname}</p>
+          <div className="user-row">
+            {user.profile && (
+              <img className="user-avatar" src={user.profile} alt="" />
+            )}
+            <p className="user-name">{user.firstname} {user.lastname}</p>
+            <button className="logout-btn" onClick={onLogout} title="Sign out">↪</button>
+          </div>
         )}
       </div>
 

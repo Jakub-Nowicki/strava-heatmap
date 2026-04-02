@@ -123,6 +123,10 @@ export default function App() {
         monthly={monthly}
         onSelectCity={setSelectedCity}
         onSelectYear={setSelectedYear}
+        onLogout={async () => {
+          await fetch(`${API}/auth/logout`, { method: 'POST' })
+          setUser(null)
+        }}
       />
       <MapView
         heatmapData={heatmapData}

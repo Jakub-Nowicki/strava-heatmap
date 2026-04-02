@@ -42,10 +42,44 @@
   text-transform: uppercase;
 }
 
+.user-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.logout-btn {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 3px 7px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  font-family: var(--font);
+  flex-shrink: 0;
+}
+
+.logout-btn:hover {
+  color: var(--text);
+  border-color: #555;
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
 .user-name {
   font-size: 13px;
   color: var(--text);
-  margin-top: 8px;
   font-weight: 500;
 }
 

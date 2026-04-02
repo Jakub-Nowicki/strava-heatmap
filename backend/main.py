@@ -3,7 +3,7 @@ import asyncio
 import httpx
 import polyline
 from datetime import date
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -82,20 +82,24 @@ async def callback(code: str):
     pool = await get_pool()
     await pool.execute(
         """
-        INSERT INTO users (id, firstname, lastname, access_token, refresh_token)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO users (id, firstname, lastname, access_token, refresh_token, profile)
+        VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (id) DO UPDATE
             SET access_token  = EXCLUDED.access_token,
-                refresh_token = EXCLUDED.refresh_token
+                refresh_token = EXCLUDED.refresh_token,
+                profile       = EXCLUDED.profile
         """,
         athlete["id"],
         athlete.get("firstname"),
         athlete.get("lastname"),
         data["access_token"],
         data["refresh_token"],
+        athlete.get("profile"),
     )
 
-    return RedirectResponse("http://localhost:5173")
+    response = RedirectResponse("http://localhost:5173")
+    response.set_cookie("athlete_id", str(athlete["id"]), max_age=60*60*24*30, httponly=True, samesite="lax")
+    return response
 
 
 @app.get("/test", response_class=HTMLResponse)
@@ -192,9 +196,29 @@ async def import_runs():
 
 
 @app.get("/api/me")
-async def get_me():
+async def get_me(request: Request):
+    # If server restarted and token_store is empty, restore from DB via cookie
+    if "access_token" not in token_store:
+        athlete_id = request.cookies.get("athlete_id")
+        if athlete_id:
+            pool = await get_pool()
+            user = await pool.fetchrow(
+                "SELECT id, firstname, lastname, access_token, refresh_token FROM users WHERE id = $1",
+                int(athlete_id),
+            )
+            if user:
+                token_store["access_token"]  = user["access_token"]
+                token_store["refresh_token"] = user["refresh_token"]
+                token_store["athlete"] = {
+                    "id":        user["id"],
+                    "firstname": user["firstname"],
+                    "lastname":  user["lastname"],
+                    "profile":   user["profile"],
+                }
+
     if "access_token" not in token_store:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
     athlete = token_store.get("athlete", {})
     return {
         "id":        athlete.get("id"),
@@ -202,6 +226,13 @@ async def get_me():
         "lastname":  athlete.get("lastname"),
         "profile":   athlete.get("profile"),
     }
+
+
+@app.post("/auth/logout")
+async def logout(response: Response):
+    token_store.clear()
+    response.delete_cookie("athlete_id")
+    return {"ok": True}
 
 
 @app.get("/api/stats")
@@ -339,7 +370,7 @@ async def get_heatmap(city: str = None, year: int = None):
     for row in rows:
         try:
             coords = polyline.decode(row["polyline"])
-            for lat, lng in coords[::3]:
+            for lat, lng in coords[::2]:
                 features.append({
                     "type":       "Feature",
                     "geometry":   {"type": "Point", "coordinates": [lng, lat]},

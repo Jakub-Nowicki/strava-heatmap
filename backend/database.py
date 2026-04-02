@@ -43,6 +43,11 @@ async def create_tables():
             )
         """)
 
+        # Add profile column if it doesn't exist yet (migration)
+        await conn.execute("""
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS profile TEXT
+        """)
+
         # Index so per-user queries are fast
         await conn.execute("""
             CREATE INDEX IF NOT EXISTS runs_user_id_idx ON runs(user_id)

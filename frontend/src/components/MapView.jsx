@@ -21,7 +21,7 @@ const HEATMAP_LAYER = {
       0.75, '#ff8c42',
       1,    '#ffffff',
     ],
-    'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 3, 14, 6],
+    'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 2, 10, 4, 14, 8],
     'heatmap-opacity': 0.85,
   },
 }
