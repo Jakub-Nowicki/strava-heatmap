@@ -1,0 +1,59 @@
+.loader-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(252, 76, 2, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 50%, rgba(252, 76, 2, 0.04) 0%, transparent 60%);
+}
+
+.loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.loader-spinner {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin 0.9s linear infinite;
+}
+
+.spinner-icon {
+  font-size: 26px;
+  color: var(--accent);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.loader-message {
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}

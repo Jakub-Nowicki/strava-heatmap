@@ -1,0 +1,228 @@
+/* ── Page ───────────────────────────────────────────────── */
+.login-page {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Animated background blobs ──────────────────────────── */
+.login-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  animation: blob-drift 8s ease-in-out infinite alternate;
+}
+
+.login-blob-1 {
+  width: 600px;
+  height: 400px;
+  background: rgba(252, 76, 2, 0.12);
+  top: -100px;
+  left: -150px;
+  animation-duration: 9s;
+  animation-delay: 0s;
+}
+
+.login-blob-2 {
+  width: 500px;
+  height: 350px;
+  background: rgba(252, 76, 2, 0.07);
+  bottom: -80px;
+  right: -100px;
+  animation-duration: 11s;
+  animation-delay: -3s;
+}
+
+.login-blob-3 {
+  width: 300px;
+  height: 300px;
+  background: rgba(252, 76, 2, 0.05);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-duration: 7s;
+  animation-delay: -5s;
+}
+
+@keyframes blob-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(40px, -30px) scale(1.08); }
+  100% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+.login-blob-3 {
+  animation-name: blob-pulse;
+}
+
+@keyframes blob-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1);    opacity: 0.6; }
+  50%       { transform: translate(-50%, -50%) scale(1.4); opacity: 0.3; }
+}
+
+/* ── Route lines SVG ─────────────────────────────────────── */
+.login-routes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.route-line {
+  fill: none;
+  stroke: rgba(252, 76, 2, 0.15);
+  stroke-width: 1.5;
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  animation: draw-route 4s ease-out forwards;
+}
+
+.route-line-1 { animation-delay: 0.2s; stroke-opacity: 0.18; }
+.route-line-2 { animation-delay: 0.6s; stroke-opacity: 0.12; stroke-width: 1; }
+.route-line-3 { animation-delay: 1.0s; stroke-opacity: 0.10; stroke-width: 1; }
+.route-line-4 { animation-delay: 1.4s; stroke-opacity: 0.08; stroke-width: 1; }
+
+@keyframes draw-route {
+  to { stroke-dashoffset: 0; }
+}
+
+/* ── Content ─────────────────────────────────────────────── */
+.login-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0;
+  max-width: 540px;
+  padding: 0 24px;
+  animation: content-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes content-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Logo ─────────────────────────────────────────────────── */
+.login-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 48px;
+}
+
+.login-logo-icon {
+  color: var(--accent);
+  font-size: 28px;
+  line-height: 1;
+  filter: drop-shadow(0 0 12px rgba(252, 76, 2, 0.6));
+  animation: icon-glow 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes icon-glow {
+  from { filter: drop-shadow(0 0 8px rgba(252, 76, 2, 0.4)); }
+  to   { filter: drop-shadow(0 0 20px rgba(252, 76, 2, 0.8)); }
+}
+
+.login-logo-text {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text);
+  text-transform: uppercase;
+}
+
+/* ── Headline ─────────────────────────────────────────────── */
+.login-headline {
+  font-size: clamp(48px, 8vw, 80px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -2px;
+  color: var(--text);
+  margin: 0 0 24px;
+}
+
+.login-headline em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+/* ── Sub ──────────────────────────────────────────────────── */
+.login-sub {
+  font-size: 16px;
+  color: var(--muted);
+  line-height: 1.65;
+  max-width: 400px;
+  margin: 0 0 36px;
+}
+
+/* ── Feature pills ────────────────────────────────────────── */
+.login-features {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 44px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.login-feature {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(4px);
+}
+
+.feature-icon {
+  font-size: 14px;
+}
+
+/* ── Strava button ────────────────────────────────────────── */
+.strava-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 36px;
+  background: var(--accent);
+  color: white;
+  border-radius: 12px;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 0 0 0 rgba(252, 76, 2, 0);
+  margin-bottom: 20px;
+}
+
+.strava-btn:hover {
+  background: #e04300;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(252, 76, 2, 0.35);
+}
+
+.strava-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* ── Note ─────────────────────────────────────────────────── */
+.login-note {
+  font-size: 12px;
+  color: #555;
+  letter-spacing: 0.3px;
+}
