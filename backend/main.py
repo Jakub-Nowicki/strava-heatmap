@@ -102,7 +102,7 @@ async def callback(code: str):
     )
 
     response = RedirectResponse("https://feisty-exploration-production-f4e0.up.railway.app")
-    response.set_cookie("athlete_id", str(athlete["id"]), max_age=60*60*24*30, httponly=True, samesite="lax")
+    response.set_cookie("athlete_id", str(athlete["id"]), max_age=60*60*24*30, httponly=True, samesite="none", secure=True)
     return response
 
 

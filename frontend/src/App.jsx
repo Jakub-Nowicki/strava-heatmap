@@ -5,12 +5,13 @@ import Login from './components/Login'
 import Loader from './components/Loader'
 
 const API = 'https://strava-heatmap-production.up.railway.app'
+const OPT = { credentials: 'include' }
 
 export default function App() {
-  const [user, setUser]               = useState(undefined)
-  const [stats, setStats]             = useState(null)
-  const [cities, setCities]           = useState([])
-  const [years, setYears]             = useState([])
+  const [user, setUser]                   = useState(undefined)
+  const [stats, setStats]                 = useState(null)
+  const [cities, setCities]               = useState([])
+  const [years, setYears]                 = useState([])
   const [selectedCity, setSelectedCity]   = useState(null)
   const [selectedYear, setSelectedYear]   = useState(null)
   const [heatmapData, setHeatmapData]     = useState(null)
@@ -21,7 +22,7 @@ export default function App() {
 
   // Check auth on load
   useEffect(() => {
-    fetch(`${API}/api/me`)
+    fetch(`${API}/api/me`, OPT)
       .then(r => r.ok ? r.json() : null)
       .then(data => setUser(data))
       .catch(() => setUser(null))
@@ -50,7 +51,7 @@ export default function App() {
 
   function runGeocoding() {
     return new Promise(resolve => {
-      const es = new EventSource(`${API}/api/geocode/stream`)
+      const es = new EventSource(`${API}/api/geocode/stream`, { withCredentials: true })
       es.addEventListener('progress', e => {
         const d = JSON.parse(e.data)
         setGeocodePct(Math.round((d.done / d.total) * 100))
@@ -66,10 +67,10 @@ export default function App() {
 
   async function loadAll() {
     setLoadingMsg('Syncing your runs...')
-    await fetch(`${API}/api/import`).catch(() => {})
+    await fetch(`${API}/api/import`, OPT).catch(() => {})
 
     // Auto-geocode any runs without a city
-    const gcRes = await fetch(`${API}/api/geocode/count`).catch(() => null)
+    const gcRes   = await fetch(`${API}/api/geocode/count`, OPT).catch(() => null)
     const gcCount = gcRes?.ok ? (await gcRes.json()).count : 0
     if (gcCount > 0) {
       setLoadingMsg(`Assigning cities to ${gcCount} runs...`)
@@ -86,22 +87,16 @@ export default function App() {
   }
 
   async function fetchStats() {
-    const url = selectedYear
-      ? `${API}/api/stats?year=${selectedYear}`
-      : `${API}/api/stats`
-    const res  = await fetch(url)
+    const url = selectedYear ? `${API}/api/stats?year=${selectedYear}` : `${API}/api/stats`
+    const res  = await fetch(url, OPT)
     const data = await res.json()
     setStats(data)
-    if (!selectedYear) {
-      setYears(Object.keys(data.km_per_year).map(Number).sort())
-    }
+    if (!selectedYear) setYears(Object.keys(data.km_per_year).map(Number).sort())
   }
 
   async function fetchCities() {
-    const url = selectedYear
-      ? `${API}/api/cities?year=${selectedYear}`
-      : `${API}/api/cities`
-    const res  = await fetch(url)
+    const url = selectedYear ? `${API}/api/cities?year=${selectedYear}` : `${API}/api/cities`
+    const res  = await fetch(url, OPT)
     const data = await res.json()
     setCities(data.cities || [])
   }
@@ -110,33 +105,29 @@ export default function App() {
     const params = new URLSearchParams()
     if (selectedCity) params.set('city', selectedCity)
     if (selectedYear) params.set('year', selectedYear)
-    const res  = await fetch(`${API}/api/heatmap?${params}`)
+    const res  = await fetch(`${API}/api/heatmap?${params}`, OPT)
     const data = await res.json()
     setHeatmapData(data)
   }
 
   async function fetchRecords() {
-    const url = selectedYear
-      ? `${API}/api/records?year=${selectedYear}`
-      : `${API}/api/records`
-    const res  = await fetch(url)
+    const url = selectedYear ? `${API}/api/records?year=${selectedYear}` : `${API}/api/records`
+    const res  = await fetch(url, OPT)
     const data = await res.json()
     setRecords(data)
   }
 
   async function fetchMonthly() {
     try {
-      const url = selectedYear
-        ? `${API}/api/monthly?year=${selectedYear}`
-        : `${API}/api/monthly`
-      const res  = await fetch(url)
+      const url = selectedYear ? `${API}/api/monthly?year=${selectedYear}` : `${API}/api/monthly`
+      const res  = await fetch(url, OPT)
       if (!res.ok) return
       const data = await res.json()
       setMonthly(data)
     } catch {}
   }
 
-  if (user === undefined) return <Loader message="Starting up..." progress={null} />
+  if (user === undefined) return <Loader message="Starting up..." />
   if (!user) return <Login />
 
   return (
@@ -154,7 +145,7 @@ export default function App() {
         onSelectCity={setSelectedCity}
         onSelectYear={setSelectedYear}
         onLogout={async () => {
-          await fetch(`${API}/auth/logout`, { method: 'POST' })
+          await fetch(`${API}/auth/logout`, { method: 'POST', ...OPT })
           setUser(null)
         }}
       />
