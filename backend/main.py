@@ -15,9 +15,13 @@ app = FastAPI(title="Strava Heatmap")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://feisty-exploration-production-f4e0.up.railway.app",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 STRAVA_CLIENT_ID     = os.getenv("STRAVA_CLIENT_ID")
@@ -97,7 +101,7 @@ async def callback(code: str):
         athlete.get("profile"),
     )
 
-    response = RedirectResponse("http://localhost:5173")
+    response = RedirectResponse("https://feisty-exploration-production-f4e0.up.railway.app")
     response.set_cookie("athlete_id", str(athlete["id"]), max_age=60*60*24*30, httponly=True, samesite="lax")
     return response
 
