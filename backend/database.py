@@ -12,7 +12,9 @@ _pool = None
 async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
-        _pool = await asyncpg.create_pool(DATABASE_URL, ssl="require")
+        # Internal Railway URLs don't need SSL, external ones do
+        ssl = None if "railway.internal" in DATABASE_URL else "require"
+        _pool = await asyncpg.create_pool(DATABASE_URL, ssl=ssl)
     return _pool
 
 
