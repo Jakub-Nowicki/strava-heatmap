@@ -661,6 +661,20 @@ async def geocode_page():
     """
 
 
+@app.get("/api/geocode/count")
+async def geocode_count():
+    """How many runs still need city assignment."""
+    if "access_token" not in token_store:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+    user_id = token_store["athlete"]["id"]
+    pool    = await get_pool()
+    count   = await pool.fetchval(
+        "SELECT COUNT(*) FROM runs WHERE user_id = $1 AND city IS NULL AND polyline IS NOT NULL AND polyline != ''",
+        user_id,
+    )
+    return {"count": count}
+
+
 @app.get("/api/geocode/stream")
 async def geocode_stream():
     if "access_token" not in token_store:

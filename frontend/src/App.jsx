@@ -17,6 +17,7 @@ export default function App() {
   const [records, setRecords]             = useState(null)
   const [monthly, setMonthly]             = useState(null)
   const [loadingMsg, setLoadingMsg]       = useState(null)
+  const [geocodePct, setGeocodePct]       = useState(null)
 
   // Check auth on load
   useEffect(() => {
@@ -47,9 +48,36 @@ export default function App() {
     fetchMonthly()
   }, [selectedYear])
 
+  function runGeocoding() {
+    return new Promise(resolve => {
+      const es = new EventSource(`${API}/api/geocode/stream`)
+      es.addEventListener('progress', e => {
+        const d = JSON.parse(e.data)
+        setGeocodePct(Math.round((d.done / d.total) * 100))
+      })
+      es.addEventListener('complete', () => {
+        setGeocodePct(100)
+        es.close()
+        setTimeout(resolve, 600)
+      })
+      es.onerror = () => { es.close(); resolve() }
+    })
+  }
+
   async function loadAll() {
     setLoadingMsg('Syncing your runs...')
     await fetch(`${API}/api/import`).catch(() => {})
+
+    // Auto-geocode any runs without a city
+    const gcRes = await fetch(`${API}/api/geocode/count`).catch(() => null)
+    const gcCount = gcRes?.ok ? (await gcRes.json()).count : 0
+    if (gcCount > 0) {
+      setLoadingMsg(`Assigning cities to ${gcCount} runs...`)
+      setGeocodePct(0)
+      await runGeocoding()
+      setGeocodePct(null)
+    }
+
     setLoadingMsg('Loading stats...')
     await Promise.allSettled([fetchStats(), fetchCities(), fetchRecords(), fetchMonthly()])
     setLoadingMsg('Loading heatmap...')
@@ -108,12 +136,12 @@ export default function App() {
     } catch {}
   }
 
-  if (user === undefined) return <Loader message="Starting up..." />
+  if (user === undefined) return <Loader message="Starting up..." progress={null} />
   if (!user) return <Login />
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
-      {loadingMsg && <Loader message={loadingMsg} />}
+      {loadingMsg && <Loader message={loadingMsg} progress={geocodePct} />}
       <Sidebar
         user={user}
         stats={stats}
