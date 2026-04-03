@@ -449,3 +449,36 @@
   letter-spacing: 0.3px;
   margin-top: 4px;
 }
+
+/* ── Powered by Strava ───────────────────────────────────── */
+.strava-badge {
+  padding: 12px 24px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.strava-badge a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.strava-badge a:hover {
+  opacity: 1;
+}
+
+.strava-badge-text {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+
+.strava-badge-logo {
+  font-size: 12px;
+  font-weight: 800;
+  color: #FC4C02;
+  letter-spacing: 1.5px;
+}

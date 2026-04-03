@@ -239,6 +239,14 @@ export default function Sidebar({
         </div>
       </div>
 
+      {/* Powered by Strava */}
+      <div className="strava-badge">
+        <a href="https://www.strava.com" target="_blank" rel="noopener noreferrer">
+          <span className="strava-badge-text">Powered by</span>
+          <span className="strava-badge-logo">STRAVA</span>
+        </a>
+      </div>
+
     </aside>
   )
 }
