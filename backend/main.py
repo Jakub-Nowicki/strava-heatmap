@@ -3,7 +3,7 @@ import asyncio
 import httpx
 import polyline
 from datetime import date
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -462,12 +462,11 @@ async def get_monthly(year: int = None):
 
 @app.get("/webhook")
 async def webhook_verify(
-    hub_mode:         str = None,
-    hub_challenge:    str = None,
-    hub_verify_token: str = None,
+    hub_mode:         str = Query(None, alias="hub.mode"),
+    hub_challenge:    str = Query(None, alias="hub.challenge"),
+    hub_verify_token: str = Query(None, alias="hub.verify_token"),
 ):
     """Strava subscription verification handshake."""
-    # Strava sends params as hub.mode etc — FastAPI maps dots to underscores
     if hub_mode == "subscribe" and hub_verify_token == WEBHOOK_VERIFY_TOKEN:
         return JSONResponse({"hub.challenge": hub_challenge})
     return JSONResponse({"error": "Verification failed"}, status_code=403)
