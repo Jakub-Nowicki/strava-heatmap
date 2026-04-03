@@ -143,14 +143,52 @@ async def fetch_page(client: httpx.AsyncClient, access_token: str, page: int) ->
     return [a for a in activities if a.get("type") == "Run"]
 
 
+async def get_valid_token() -> str | None:
+    """Return a valid access token, refreshing if expired."""
+    if "access_token" not in token_store:
+        return None
+    async with httpx.AsyncClient(timeout=10) as client:
+        test = await client.get(
+            "https://www.strava.com/api/v3/athlete",
+            headers={"Authorization": f"Bearer {token_store['access_token']}"},
+        )
+        if test.status_code == 200:
+            return token_store["access_token"]
+        # Token expired — refresh it
+        resp = await client.post(
+            "https://www.strava.com/oauth/token",
+            data={
+                "client_id":     STRAVA_CLIENT_ID,
+                "client_secret": STRAVA_CLIENT_SECRET,
+                "grant_type":    "refresh_token",
+                "refresh_token": token_store["refresh_token"],
+            },
+        )
+        tokens = resp.json()
+        if "access_token" not in tokens:
+            return None
+        token_store["access_token"]  = tokens["access_token"]
+        token_store["refresh_token"] = tokens["refresh_token"]
+        # Persist to DB
+        pool = await get_pool()
+        await pool.execute(
+            "UPDATE users SET access_token = $1, refresh_token = $2 WHERE id = $3",
+            tokens["access_token"], tokens["refresh_token"], token_store["athlete"]["id"],
+        )
+        return tokens["access_token"]
+
+
 @app.get("/api/import")
 async def import_runs():
     if "access_token" not in token_store:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
-    access_token = token_store["access_token"]
-    user_id      = token_store["athlete"]["id"]
-    pool         = await get_pool()
+    access_token = await get_valid_token()
+    if not access_token:
+        return JSONResponse({"error": "Token refresh failed"}, status_code=401)
+
+    user_id = token_store["athlete"]["id"]
+    pool    = await get_pool()
 
     async with httpx.AsyncClient(timeout=30) as client:
         tasks   = [fetch_page(client, access_token, p) for p in range(1, 51)]
