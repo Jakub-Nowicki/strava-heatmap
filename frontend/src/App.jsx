@@ -4,7 +4,7 @@ import MapView from './components/MapView'
 import Login from './components/Login'
 import Loader from './components/Loader'
 
-const API = 'http://localhost:8000'
+const API = 'https://strava-heatmap-production.up.railway.app'
 
 export default function App() {
   const [user, setUser]               = useState(undefined)
