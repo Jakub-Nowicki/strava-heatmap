@@ -48,7 +48,9 @@ export default function App() {
   }, [selectedYear])
 
   async function loadAll() {
-    setLoadingMsg('Fetching your runs...')
+    setLoadingMsg('Syncing your runs...')
+    await fetch(`${API}/api/import`).catch(() => {})
+    setLoadingMsg('Loading stats...')
     await Promise.allSettled([fetchStats(), fetchCities(), fetchRecords(), fetchMonthly()])
     setLoadingMsg('Loading heatmap...')
     await fetchHeatmap().catch(() => {})

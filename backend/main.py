@@ -559,6 +559,26 @@ async def webhook_event(request: Request):
         return {"status": f"insert_failed: {e}"}
 
     print(f"[WEBHOOK] New run added: {run['name']} ({run['distance']/1000:.1f} km) for athlete {athlete_id}")
+
+    # Auto-geocode the new run immediately
+    poly = run.get("map", {}).get("summary_polyline")
+    if poly:
+        try:
+            coords = polyline.decode(poly)
+            if coords:
+                lat, lng = coords[0]
+                semaphore = asyncio.Semaphore(1)
+                async with httpx.AsyncClient(timeout=10) as gc_client:
+                    city = await fetch_city_for_coords(gc_client, semaphore, lat, lng)
+                    if city:
+                        await pool.execute(
+                            "UPDATE runs SET city = $1 WHERE id = $2",
+                            city, run["id"]
+                        )
+                        print(f"[WEBHOOK] Geocoded to: {city}")
+        except Exception as e:
+            print(f"[WEBHOOK] Geocode failed: {e}")
+
     return {"status": "ok", "activity_id": activity_id}
 
 
