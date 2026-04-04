@@ -193,24 +193,14 @@
 
 /* ── Strava button ────────────────────────────────────────── */
 .strava-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 36px;
-  background: var(--accent);
-  color: white;
-  border-radius: 12px;
+  display: inline-block;
   text-decoration: none;
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 0 0 0 rgba(252, 76, 2, 0);
+  transition: transform 0.15s, box-shadow 0.15s;
   margin-bottom: 20px;
+  border-radius: 4px;
 }
 
 .strava-btn:hover {
-  background: #e04300;
   transform: translateY(-2px);
   box-shadow: 0 8px 32px rgba(252, 76, 2, 0.35);
 }
@@ -218,6 +208,11 @@
 .strava-btn:active {
   transform: translateY(0);
   box-shadow: none;
+}
+
+.strava-btn-img {
+  display: block;
+  height: 48px;
 }
 
 /* ── Note ─────────────────────────────────────────────────── */

@@ -118,7 +118,7 @@ export default function Sidebar({
           <span className="logo-icon">⬡</span>
           <span className="logo-text">HeatRun</span>
         </div>
-        <p className="logo-sub">Strava Heatmap</p>
+        <p className="logo-sub">Running Heatmap</p>
         {user && (
           <div className="user-row">
             {user.profile && (
@@ -242,8 +242,7 @@ export default function Sidebar({
       {/* Powered by Strava */}
       <div className="strava-badge">
         <a href="https://www.strava.com" target="_blank" rel="noopener noreferrer">
-          <span className="strava-badge-text">Powered by</span>
-          <span className="strava-badge-logo">STRAVA</span>
+          <img src="/api_logo_pwrdBy_strava_horiz_white.svg" alt="Powered by Strava" className="strava-badge-img" />
         </a>
       </div>
 

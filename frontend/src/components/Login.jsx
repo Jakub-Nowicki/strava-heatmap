@@ -50,10 +50,7 @@ export default function Login() {
 
         {/* CTA */}
         <a href="https://strava-heatmap-production.up.railway.app/auth/login" className="strava-btn">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
-            <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/>
-          </svg>
-          Connect with Strava
+          <img src="/btn_strava_connect_with_orange.svg" alt="Connect with Strava" className="strava-btn-img" />
         </a>
 
         <p className="login-note">Your data stays private — only you can see your runs.</p>

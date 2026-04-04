@@ -470,15 +470,7 @@
   opacity: 1;
 }
 
-.strava-badge-text {
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 0.5px;
-}
-
-.strava-badge-logo {
-  font-size: 12px;
-  font-weight: 800;
-  color: #FC4C02;
-  letter-spacing: 1.5px;
+.strava-badge-img {
+  height: 20px;
+  display: block;
 }
