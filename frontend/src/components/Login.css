@@ -215,9 +215,87 @@
   height: 48px;
 }
 
+/* ── Consent disclosure ───────────────────────────────────── */
+.login-consent {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 28px;
+  text-align: left;
+  backdrop-filter: blur(4px);
+}
+
+.consent-title {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.consent-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.consent-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.consent-check {
+  color: var(--accent);
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.consent-policy {
+  font-size: 11px;
+  color: #555;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+.consent-policy-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 11px;
+  text-decoration: underline;
+  font-family: var(--font);
+}
+
+.consent-policy-link:hover {
+  opacity: 0.8;
+}
+
 /* ── Note ─────────────────────────────────────────────────── */
 .login-note {
   font-size: 12px;
   color: #555;
   letter-spacing: 0.3px;
+}
+
+.login-note-link {
+  color: #666;
+  text-decoration: underline;
+}
+
+.login-note-link:hover {
+  color: var(--muted);
 }

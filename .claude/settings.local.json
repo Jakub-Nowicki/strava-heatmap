@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "mcp__69896441-1b58-400c-8750-496d4b056ff6__gmail_create_draft",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }

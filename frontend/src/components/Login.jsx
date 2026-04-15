@@ -1,6 +1,6 @@
 import './Login.css'
 
-export default function Login() {
+export default function Login({ onShowPrivacy }) {
   return (
     <div className="login-page">
       {/* Animated background blobs */}
@@ -48,12 +48,30 @@ export default function Login() {
           </div>
         </div>
 
+        {/* Data consent disclosure — required by Strava API Agreement §5 */}
+        <div className="login-consent">
+          <p className="consent-title">Before you connect, here is what HeatRun does with your data:</p>
+          <ul className="consent-list">
+            <li><span className="consent-check">✓</span> <strong>What is collected:</strong> your running activities (name, date, distance, GPS route polyline) via the Strava API</li>
+            <li><span className="consent-check">✓</span> <strong>How it is collected:</strong> exclusively through Strava's official OAuth flow — no data is accessed without your authorization</li>
+            <li><span className="consent-check">✓</span> <strong>Withdrawing consent:</strong> sign out at any time, or revoke access under My Apps in your Strava account settings</li>
+            <li><span className="consent-check">✓</span> <strong>Requesting deletion:</strong> use the Delete Account option in the app sidebar to permanently erase all your data</li>
+          </ul>
+          <p className="consent-policy">
+            By connecting you agree to our{' '}
+            <button className="consent-policy-link" onClick={onShowPrivacy}>Privacy Policy</button>.
+          </p>
+        </div>
+
         {/* CTA */}
         <a href="https://strava-heatmap-production.up.railway.app/auth/login" className="strava-btn">
           <img src="/btn_strava_connect_with_orange.svg" alt="Connect with Strava" className="strava-btn-img" />
         </a>
 
-        <p className="login-note">Your data stays private — only you can see your runs.</p>
+        <p className="login-note">
+          Questions? Email{' '}
+          <a href="mailto:support@heatrun.app" className="login-note-link">support@heatrun.app</a>
+        </p>
       </div>
     </div>
   )

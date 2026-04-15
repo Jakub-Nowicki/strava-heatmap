@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import './Sidebar.css'
 
 const MONTH_LABELS = ['J','F','M','A','M','J','J','A','S','O','N','D']
@@ -95,18 +96,28 @@ export default function Sidebar({
   user, stats, cities, years,
   selectedCity, selectedYear,
   records, monthly,
-  onSelectCity, onSelectYear, onLogout,
+  onSelectCity, onSelectYear,
+  onShowPrivacy, onDeleteAccount, onLogout,
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting]           = useState(false)
+
   const totalKm   = stats?.total_km   ?? '—'
   const totalRuns = stats?.total_runs ?? '—'
 
-  // Separate verified cities from Unverified
-  const verifiedCities   = cities.filter(c => c.city !== 'Unverified')
-  const unverifiedEntry  = cities.find(c => c.city === 'Unverified')
-  const maxKm            = verifiedCities.length > 0 ? verifiedCities[0].km : 1
+  const verifiedCities  = cities.filter(c => c.city !== 'Unverified')
+  const unverifiedEntry = cities.find(c => c.city === 'Unverified')
+  const maxKm           = verifiedCities.length > 0 ? verifiedCities[0].km : 1
 
   function handleCityClick(city) {
     onSelectCity(selectedCity === city ? null : city)
+  }
+
+  async function handleDeleteConfirmed() {
+    setDeleting(true)
+    await onDeleteAccount()
+    setDeleting(false)
+    setConfirmDelete(false)
   }
 
   return (
@@ -124,7 +135,17 @@ export default function Sidebar({
             {user.profile && (
               <img className="user-avatar" src={user.profile} alt="" />
             )}
-            <p className="user-name">{user.firstname} {user.lastname}</p>
+            <div className="user-info">
+              <p className="user-name">{user.firstname} {user.lastname}</p>
+              <a
+                className="strava-profile-link"
+                href={`https://www.strava.com/athletes/${user.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View on Strava ↗
+              </a>
+            </div>
             <button className="logout-btn" onClick={onLogout} title="Sign out">↪</button>
           </div>
         )}
@@ -239,12 +260,60 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Powered by Strava */}
-      <div className="strava-badge">
-        <a href="https://www.strava.com" target="_blank" rel="noopener noreferrer">
-          <img src="/api_logo_pwrdBy_strava_horiz_white.svg" alt="Powered by Strava" className="strava-badge-img" />
-        </a>
+      {/* Footer: Strava badge + links */}
+      <div className="sidebar-footer">
+
+        {/* Powered by Strava */}
+        <div className="strava-badge">
+          <a href="https://www.strava.com" target="_blank" rel="noopener noreferrer">
+            <img src="/api_logo_pwrdBy_strava_horiz_white.svg" alt="Powered by Strava" className="strava-badge-img" />
+          </a>
+        </div>
+
+        {/* Support + Privacy links */}
+        <div className="footer-links">
+          <a href="mailto:support@heatrun.app" className="footer-link">Support</a>
+          <span className="footer-dot">·</span>
+          <button className="footer-link footer-link-btn" onClick={onShowPrivacy}>Privacy Policy</button>
+          <span className="footer-dot">·</span>
+          <button
+            className="footer-link footer-link-btn footer-link-danger"
+            onClick={() => setConfirmDelete(true)}
+          >
+            Delete Account
+          </button>
+        </div>
+
       </div>
+
+      {/* Delete account confirmation overlay */}
+      {confirmDelete && (
+        <div className="delete-overlay">
+          <div className="delete-dialog">
+            <p className="delete-title">Delete your account?</p>
+            <p className="delete-body">
+              This permanently deletes all your runs and account data from HeatRun.
+              Your Strava account is not affected.
+            </p>
+            <div className="delete-actions">
+              <button
+                className="delete-cancel"
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="delete-confirm"
+                onClick={handleDeleteConfirmed}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting…' : 'Delete everything'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </aside>
   )

@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import MapView from './components/MapView'
 import Login from './components/Login'
 import Loader from './components/Loader'
+import PrivacyPolicy from './components/PrivacyPolicy'
 
 const API = 'https://strava-heatmap-production.up.railway.app'
 const OPT = { credentials: 'include' }
@@ -19,6 +20,7 @@ export default function App() {
   const [monthly, setMonthly]             = useState(null)
   const [loadingMsg, setLoadingMsg]       = useState(null)
   const [geocodePct, setGeocodePct]       = useState(null)
+  const [showPrivacy, setShowPrivacy]     = useState(false)
 
   // Check auth on load
   useEffect(() => {
@@ -69,7 +71,6 @@ export default function App() {
     setLoadingMsg('Syncing your runs...')
     await fetch(`${API}/api/import`, OPT).catch(() => {})
 
-    // Auto-geocode any runs without a city
     const gcRes   = await fetch(`${API}/api/geocode/count`, OPT).catch(() => null)
     const gcCount = gcRes?.ok ? (await gcRes.json()).count : 0
     if (gcCount > 0) {
@@ -127,8 +128,25 @@ export default function App() {
     } catch {}
   }
 
+  async function handleDeleteAccount() {
+    const res = await fetch(`${API}/api/account`, { method: 'DELETE', ...OPT })
+    if (res.ok) {
+      setUser(null)
+      setStats(null)
+      setCities([])
+      setYears([])
+      setHeatmapData(null)
+      setRecords(null)
+      setMonthly(null)
+    }
+  }
+
+  if (showPrivacy) {
+    return <PrivacyPolicy onBack={() => setShowPrivacy(false)} />
+  }
+
   if (user === undefined) return <Loader message="Starting up..." />
-  if (!user) return <Login />
+  if (!user) return <Login onShowPrivacy={() => setShowPrivacy(true)} />
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
@@ -144,6 +162,8 @@ export default function App() {
         monthly={monthly}
         onSelectCity={setSelectedCity}
         onSelectYear={setSelectedYear}
+        onShowPrivacy={() => setShowPrivacy(true)}
+        onDeleteAccount={handleDeleteAccount}
         onLogout={async () => {
           await fetch(`${API}/auth/logout`, { method: 'POST', ...OPT })
           setUser(null)

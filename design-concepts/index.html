@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>HeatRun — Design Concepts</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; }
+
+    .page-header {
+      padding: 32px 48px 0;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .page-header h1 { font-size: 22px; font-weight: 700; color: #fff; }
+    .page-header p { font-size: 14px; color: #666; margin-top: 4px; }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 24px 48px 0;
+    }
+    .tab {
+      padding: 8px 20px;
+      border-radius: 8px 8px 0 0;
+      border: 1px solid #222;
+      border-bottom: none;
+      background: #111;
+      color: #666;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .tab.active { background: #1a1a1a; color: #fff; border-color: #333; }
+    .tab:hover:not(.active) { color: #aaa; }
+
+    .concepts { padding: 0 48px 48px; }
+
+    .concept { display: none; }
+    .concept.active { display: block; }
+
+    /* ── CONCEPT WRAPPER ── */
+    .mockup-wrap {
+      border: 1px solid #222;
+      border-radius: 0 12px 12px 12px;
+      overflow: hidden;
+      background: #1a1a1a;
+    }
+
+    .concept-label {
+      padding: 12px 20px;
+      background: #111;
+      border-bottom: 1px solid #222;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .concept-label h2 { font-size: 15px; font-weight: 600; }
+    .concept-label p { font-size: 12px; color: #666; }
+    .concept-tag {
+      margin-left: auto;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(252,76,2,0.15);
+      color: #FC4C02;
+      font-weight: 600;
+    }
+
+    /* ════════════════════════════════
+       CONCEPT 1 — OVERLAY / FULL MAP
+       ════════════════════════════════ */
+    .c1-shell {
+      position: relative;
+      height: 580px;
+      background: #0d1117;
+      overflow: hidden;
+    }
+    /* fake map */
+    .fake-map {
+      position: absolute; inset: 0;
+      background: #0d1117;
+    }
+    .fake-map-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    /* heatmap glow blobs */
+    .heat-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(40px);
+    }
+    .h1 { width:220px;height:220px;background:rgba(252,76,2,0.35);top:140px;left:280px; }
+    .h2 { width:160px;height:160px;background:rgba(252,76,2,0.25);top:200px;left:400px; }
+    .h3 { width:120px;height:120px;background:rgba(252,76,2,0.2);top:100px;left:480px; }
+    .h4 { width:180px;height:180px;background:rgba(252,76,2,0.15);top:280px;left:200px; }
+    .h5 { width:100px;height:100px;background:rgba(252,76,2,0.3);top:180px;left:620px; }
+
+    /* fake route lines */
+    .fake-routes { position:absolute;inset:0; }
+
+    /* top bar */
+    .c1-topbar {
+      position: absolute;
+      top: 16px; left: 16px; right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 10;
+    }
+    .c1-logo {
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .c1-logo-icon { color: #FC4C02; font-size: 18px; }
+    .c1-logo-text { font-size: 15px; font-weight: 700; }
+    .c1-search {
+      flex: 1;
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 9px 16px;
+      font-size: 13px;
+      color: #666;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .c1-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FC4C02, #ff7043);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      border: 2px solid rgba(252,76,2,0.4);
+    }
+
+    /* stat cards row */
+    .c1-stats {
+      position: absolute;
+      top: 76px; left: 16px;
+      display: flex;
+      gap: 10px;
+      z-index: 10;
+    }
+    .c1-stat {
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 10px 16px;
+      min-width: 90px;
+    }
+    .c1-stat-val { font-size: 20px; font-weight: 700; color: #fff; }
+    .c1-stat-lbl { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+    /* city pills */
+    .c1-cities {
+      position: absolute;
+      bottom: 16px; left: 16px; right: 16px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      z-index: 10;
+    }
+    .c1-city {
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      color: #aaa;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .c1-city.active {
+      background: rgba(252,76,2,0.2);
+      border-color: rgba(252,76,2,0.5);
+      color: #FC4C02;
+    }
+    .c1-city-km { font-size: 11px; color: #555; }
+    .c1-city.active .c1-city-km { color: rgba(252,76,2,0.7); }
+
+    /* records card */
+    .c1-records {
+      position: absolute;
+      top: 76px; right: 16px;
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 12px 16px;
+      width: 200px;
+      z-index: 10;
+    }
+    .c1-records-title { font-size: 10px; color: #555; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+    .c1-record-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .c1-record-icon { font-size: 14px; }
+    .c1-record-val { font-size: 15px; font-weight: 700; }
+    .c1-record-sub { font-size: 10px; color: #555; }
+
+
+    /* ════════════════════════════════
+       CONCEPT 2 — DARK DASHBOARD
+       ════════════════════════════════ */
+    .c2-shell {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      grid-template-rows: 56px 1fr;
+      height: 580px;
+      background: #050508;
+    }
+    .c2-topbar {
+      grid-column: 1 / -1;
+      background: #0a0a0f;
+      border-bottom: 1px solid #1a1a2e;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+    }
+    .c2-logo { display: flex; align-items: center; gap: 8px; margin-right: auto; }
+    .c2-logo-hex { font-size: 20px; color: #FC4C02; }
+    .c2-logo-name { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+    .c2-nav { display: flex; gap: 4px; }
+    .c2-nav-item {
+      padding: 5px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #444;
+      cursor: pointer;
+    }
+    .c2-nav-item.active { background: rgba(252,76,2,0.15); color: #FC4C02; }
+    .c2-avatar { width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#FC4C02,#ff7043);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700; }
+
+    .c2-sidebar {
+      background: #0a0a0f;
+      border-right: 1px solid #1a1a2e;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .c2-section-label { font-size: 9px; color: #333; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+
+    .c2-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .c2-stat-card {
+      background: #111118;
+      border: 1px solid #1a1a2e;
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .c2-stat-val { font-size: 18px; font-weight: 700; color: #fff; }
+    .c2-stat-lbl { font-size: 9px; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+    .c2-stat-card.accent { border-color: rgba(252,76,2,0.3); background: rgba(252,76,2,0.06); }
+    .c2-stat-card.accent .c2-stat-val { color: #FC4C02; }
+
+    .c2-year-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+    .c2-pill {
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid #1a1a2e;
+      background: transparent;
+      color: #444;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .c2-pill.active { background: #FC4C02; border-color: #FC4C02; color: #fff; font-weight: 700; }
+
+    .c2-city-list { display: flex; flex-direction: column; gap: 4px; }
+    .c2-city {
+      display: flex;
+      align-items: center;
+      padding: 7px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .c2-city:hover { background: #111118; }
+    .c2-city.active { background: rgba(252,76,2,0.08); border-color: rgba(252,76,2,0.2); }
+    .c2-city-dot { width:6px;height:6px;border-radius:50%;background:#333;margin-right:8px;flex-shrink:0; }
+    .c2-city.active .c2-city-dot { background: #FC4C02; }
+    .c2-city-name { font-size: 12px; color: #aaa; flex: 1; }
+    .c2-city.active .c2-city-name { color: #fff; }
+    .c2-city-km { font-size: 11px; color: #333; }
+    .c2-city.active .c2-city-km { color: rgba(252,76,2,0.7); }
+
+    /* sparkline in sidebar */
+    .c2-spark-wrap { background: #111118; border: 1px solid #1a1a2e; border-radius: 8px; padding: 10px; }
+    .c2-spark-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .c2-spark-yr { font-size: 11px; color: #FC4C02; font-weight: 600; }
+    .c2-spark-svg { width: 100%; }
+
+    .c2-map {
+      position: relative;
+      background: #050508;
+      overflow: hidden;
+    }
+    .c2-map-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(252,76,2,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(252,76,2,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .c2-heat1 { position:absolute;width:260px;height:260px;background:radial-gradient(circle,rgba(252,76,2,0.4) 0%,transparent 70%);top:100px;left:200px;border-radius:50%; }
+    .c2-heat2 { position:absolute;width:180px;height:180px;background:radial-gradient(circle,rgba(252,76,2,0.25) 0%,transparent 70%);top:160px;left:340px;border-radius:50%; }
+    .c2-heat3 { position:absolute;width:140px;height:140px;background:radial-gradient(circle,rgba(252,130,2,0.2) 0%,transparent 70%);top:80px;left:450px;border-radius:50%; }
+    .c2-heat4 { position:absolute;width:200px;height:200px;background:radial-gradient(circle,rgba(252,76,2,0.15) 0%,transparent 70%);top:240px;left:160px;border-radius:50%; }
+
+    .c2-map-label {
+      position: absolute;
+      top: 12px; right: 12px;
+      background: rgba(10,10,15,0.8);
+      border: 1px solid #1a1a2e;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      color: #FC4C02;
+      font-weight: 600;
+    }
+
+
+    /* ════════════════════════════════
+       CONCEPT 3 — LIGHT / CLEAN
+       ════════════════════════════════ */
+    .c3-shell {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      height: 580px;
+      background: #f5f5f0;
+    }
+    .c3-sidebar {
+      background: #fff;
+      border-right: 1px solid #e8e8e8;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .c3-header {
+      padding: 20px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .c3-logo { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .c3-logo-icon { color: #FC4C02; font-size: 20px; }
+    .c3-logo-text { font-size: 17px; font-weight: 700; color: #111; }
+    .c3-user { display: flex; align-items: center; gap: 8px; }
+    .c3-avatar { width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#FC4C02,#ff7043);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff; }
+    .c3-username { font-size: 13px; color: #333; font-weight: 500; }
+
+    .c3-stats { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #f0f0f0; }
+    .c3-stat { padding: 14px 20px; }
+    .c3-stat:first-child { border-right: 1px solid #f0f0f0; }
+    .c3-stat-val { font-size: 22px; font-weight: 700; color: #111; }
+    .c3-stat-lbl { font-size: 10px; color: #bbb; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+    .c3-section { padding: 16px 20px 0; }
+    .c3-section-lbl { font-size: 10px; color: #bbb; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; margin-bottom: 10px; }
+
+    .c3-year-pills { display: flex; gap: 6px; flex-wrap: wrap; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0; }
+    .c3-pill {
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid #e8e8e8;
+      background: transparent;
+      color: #bbb;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .c3-pill.active { background: #FC4C02; border-color: #FC4C02; color: #fff; font-weight: 600; }
+
+    .c3-city-list { flex: 1; overflow-y: auto; padding: 0 20px 16px; margin-top: 16px; display: flex; flex-direction: column; gap: 2px; }
+    .c3-city {
+      display: flex;
+      align-items: center;
+      padding: 9px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .c3-city:hover { background: #f8f8f8; }
+    .c3-city.active { background: #fff5f2; }
+    .c3-city-name { font-size: 13px; color: #333; flex: 1; font-weight: 500; }
+    .c3-city.active .c3-city-name { color: #FC4C02; }
+    .c3-city-km { font-size: 12px; color: #bbb; }
+    .c3-city.active .c3-city-km { color: rgba(252,76,2,0.6); }
+    .c3-city-bar-wrap { height: 2px; background: #f0f0f0; border-radius: 1px; margin-top: 4px; }
+    .c3-city-bar { height: 100%; background: #ddd; border-radius: 1px; }
+    .c3-city.active .c3-city-bar { background: #FC4C02; }
+
+    .c3-strava-badge { padding: 12px 20px; border-top: 1px solid #f0f0f0; margin-top: auto; }
+    .c3-strava-badge a { display: flex; align-items: center; gap: 6px; text-decoration: none; opacity: 0.5; }
+    .c3-strava-badge-text { font-size: 10px; color: #999; }
+    .c3-strava-badge-logo { font-size: 12px; font-weight: 800; color: #FC4C02; letter-spacing: 1.5px; }
+
+    .c3-map {
+      position: relative;
+      overflow: hidden;
+      background: #e8e4dc;
+    }
+    .c3-map-roads {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    .c3-heat1 { position:absolute;width:240px;height:240px;background:radial-gradient(circle,rgba(252,76,2,0.5) 0%,transparent 70%);top:100px;left:180px;border-radius:50%; }
+    .c3-heat2 { position:absolute;width:160px;height:160px;background:radial-gradient(circle,rgba(252,76,2,0.3) 0%,transparent 70%);top:160px;left:310px;border-radius:50%; }
+    .c3-heat3 { position:absolute;width:120px;height:120px;background:radial-gradient(circle,rgba(252,130,2,0.25) 0%,transparent 70%);top:80px;left:400px;border-radius:50%; }
+    .c3-heat4 { position:absolute;width:180px;height:180px;background:radial-gradient(circle,rgba(252,76,2,0.2) 0%,transparent 70%);top:260px;left:150px;border-radius:50%; }
+
+    .c3-map-badge {
+      position: absolute;
+      bottom: 16px; right: 16px;
+      background: rgba(255,255,255,0.9);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 11px;
+      color: #999;
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <h1>HeatRun — Design Concepts</h1>
+    <p>Click a tab to preview each design direction</p>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="show(0)">1 · Full Map Overlay</div>
+  <div class="tab" onclick="show(1)">2 · Dark Dashboard</div>
+  <div class="tab" onclick="show(2)">3 · Light & Clean</div>
+</div>
+
+<div class="concepts">
+
+  <!-- CONCEPT 1 -->
+  <div class="concept active" id="c0">
+    <div class="mockup-wrap">
+      <div class="concept-label">
+        <div>
+          <h2>Full Map Overlay</h2>
+          <p>Map takes 100% of the screen. Stats, cities, and records float as glassmorphism cards on top.</p>
+        </div>
+        <span class="concept-tag">Most dramatic</span>
+      </div>
+      <div class="c1-shell">
+        <div class="fake-map">
+          <div class="fake-map-grid"></div>
+          <div class="heat-blob h1"></div>
+          <div class="heat-blob h2"></div>
+          <div class="heat-blob h3"></div>
+          <div class="heat-blob h4"></div>
+          <div class="heat-blob h5"></div>
+          <svg class="fake-routes" viewBox="0 0 900 580" preserveAspectRatio="xMidYMid slice" opacity="0.15">
+            <path d="M 0 290 Q 150 200 300 250 T 600 230 T 900 290" stroke="#FC4C02" stroke-width="1.5" fill="none"/>
+            <path d="M 0 320 Q 200 260 350 300 T 650 280 T 900 320" stroke="#FC4C02" stroke-width="1" fill="none"/>
+            <path d="M 100 350 Q 300 270 450 320 T 750 300 T 900 350" stroke="#FC4C02" stroke-width="1" fill="none"/>
+            <path d="M 200 200 Q 350 160 500 190 T 800 180" stroke="#ff7043" stroke-width="1.2" fill="none"/>
+          </svg>
+        </div>
+        <!-- top bar -->
+        <div class="c1-topbar">
+          <div class="c1-logo">
+            <span class="c1-logo-icon">⬡</span>
+            <span class="c1-logo-text">HeatRun</span>
+          </div>
+          <div class="c1-search">🔍 Search city...</div>
+          <div class="c1-avatar">JN</div>
+        </div>
+        <!-- stat cards -->
+        <div class="c1-stats">
+          <div class="c1-stat"><div class="c1-stat-val">2,847</div><div class="c1-stat-lbl">km total</div></div>
+          <div class="c1-stat"><div class="c1-stat-val">312</div><div class="c1-stat-lbl">runs</div></div>
+          <div class="c1-stat"><div class="c1-stat-val">2024</div><div class="c1-stat-lbl">year</div></div>
+        </div>
+        <!-- records -->
+        <div class="c1-records">
+          <div class="c1-records-title">Records</div>
+          <div class="c1-record-row">
+            <span class="c1-record-icon">⚡</span>
+            <div><div class="c1-record-val">32.4 km</div><div class="c1-record-sub">Longest run</div></div>
+          </div>
+          <div class="c1-record-row">
+            <span class="c1-record-icon">📅</span>
+            <div><div class="c1-record-val">284 km</div><div class="c1-record-sub">Best month · Aug 2023</div></div>
+          </div>
+        </div>
+        <!-- city pills -->
+        <div class="c1-cities">
+          <div class="c1-city active">Warsaw <span class="c1-city-km">1,240 km</span></div>
+          <div class="c1-city">Kraków <span class="c1-city-km">680 km</span></div>
+          <div class="c1-city">Gdańsk <span class="c1-city-km">420 km</span></div>
+          <div class="c1-city">Wrocław <span class="c1-city-km">280 km</span></div>
+          <div class="c1-city">Berlin <span class="c1-city-km">140 km</span></div>
+          <div class="c1-city">All cities</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONCEPT 2 -->
+  <div class="concept" id="c1">
+    <div class="mockup-wrap">
+      <div class="concept-label">
+        <div>
+          <h2>Dark Dashboard</h2>
+          <p>Deep navy/black palette. Top navigation bar. Richer sidebar with more data. Map glows orange.</p>
+        </div>
+        <span class="concept-tag">Data-rich</span>
+      </div>
+      <div class="c2-shell">
+        <!-- topbar -->
+        <div class="c2-topbar">
+          <div class="c2-logo">
+            <span class="c2-logo-hex">⬡</span>
+            <span class="c2-logo-name">HeatRun</span>
+          </div>
+          <div class="c2-nav">
+            <div class="c2-nav-item active">Map</div>
+            <div class="c2-nav-item">Stats</div>
+            <div class="c2-nav-item">Records</div>
+          </div>
+          <div class="c2-avatar" style="margin-left:auto">JN</div>
+        </div>
+        <!-- sidebar -->
+        <div class="c2-sidebar">
+          <div>
+            <div class="c2-section-label">Overview</div>
+            <div class="c2-stat-grid">
+              <div class="c2-stat-card accent"><div class="c2-stat-val">2,847</div><div class="c2-stat-lbl">km total</div></div>
+              <div class="c2-stat-card"><div class="c2-stat-val">312</div><div class="c2-stat-lbl">runs</div></div>
+              <div class="c2-stat-card"><div class="c2-stat-val">32.4</div><div class="c2-stat-lbl">longest km</div></div>
+              <div class="c2-stat-card"><div class="c2-stat-val">284</div><div class="c2-stat-lbl">best month</div></div>
+            </div>
+          </div>
+          <div>
+            <div class="c2-section-label">Year</div>
+            <div class="c2-year-pills">
+              <div class="c2-pill active">All</div>
+              <div class="c2-pill">2024</div>
+              <div class="c2-pill">2023</div>
+              <div class="c2-pill">2022</div>
+              <div class="c2-pill">2021</div>
+            </div>
+          </div>
+          <div>
+            <div class="c2-section-label">Monthly km</div>
+            <div class="c2-spark-wrap">
+              <div class="c2-spark-row">
+                <span style="font-size:10px;color:#444">2024</span>
+                <span class="c2-spark-yr">↑ 12%</span>
+              </div>
+              <svg class="c2-spark-svg" height="36" viewBox="0 0 220 36">
+                <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FC4C02" stop-opacity="0.3"/><stop offset="100%" stop-color="#FC4C02" stop-opacity="0"/></linearGradient></defs>
+                <path d="M 0 30 L 20 28 L 40 22 L 60 18 L 80 12 L 100 8 L 120 14 L 140 10 L 160 16 L 180 20 L 200 24 L 220 26 L 220 36 L 0 36 Z" fill="url(#sg)"/>
+                <path d="M 0 30 L 20 28 L 40 22 L 60 18 L 80 12 L 100 8 L 120 14 L 140 10 L 160 16 L 180 20 L 200 24 L 220 26" stroke="#FC4C02" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+          <div>
+            <div class="c2-section-label">Cities</div>
+            <div class="c2-city-list">
+              <div class="c2-city active"><div class="c2-city-dot"></div><span class="c2-city-name">Warsaw</span><span class="c2-city-km">1,240 km</span></div>
+              <div class="c2-city"><div class="c2-city-dot"></div><span class="c2-city-name">Kraków</span><span class="c2-city-km">680 km</span></div>
+              <div class="c2-city"><div class="c2-city-dot"></div><span class="c2-city-name">Gdańsk</span><span class="c2-city-km">420 km</span></div>
+              <div class="c2-city"><div class="c2-city-dot"></div><span class="c2-city-name">Wrocław</span><span class="c2-city-km">280 km</span></div>
+              <div class="c2-city"><div class="c2-city-dot"></div><span class="c2-city-name">Berlin</span><span class="c2-city-km">140 km</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- map -->
+        <div class="c2-map">
+          <div class="c2-map-grid"></div>
+          <div class="c2-heat1"></div>
+          <div class="c2-heat2"></div>
+          <div class="c2-heat3"></div>
+          <div class="c2-heat4"></div>
+          <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 640 524" preserveAspectRatio="xMidYMid slice" opacity="0.2">
+            <path d="M 0 260 Q 120 180 240 220 T 480 200 T 640 260" stroke="#FC4C02" stroke-width="1.5" fill="none"/>
+            <path d="M 0 290 Q 160 220 280 260 T 520 240 T 640 290" stroke="#FC4C02" stroke-width="1" fill="none"/>
+            <path d="M 80 320 Q 240 250 360 290 T 600 270" stroke="#ff7043" stroke-width="1.2" fill="none"/>
+          </svg>
+          <div class="c2-map-label">Warsaw · Active</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONCEPT 3 -->
+  <div class="concept" id="c2">
+    <div class="mockup-wrap">
+      <div class="concept-label">
+        <div>
+          <h2>Light & Clean</h2>
+          <p>White sidebar, light map style. Minimal, airy feel. Easier to read stats at a glance.</p>
+        </div>
+        <span class="concept-tag">Most readable</span>
+      </div>
+      <div class="c3-shell">
+        <!-- sidebar -->
+        <div class="c3-sidebar">
+          <div class="c3-header">
+            <div class="c3-logo">
+              <span class="c3-logo-icon">⬡</span>
+              <span class="c3-logo-text">HeatRun</span>
+            </div>
+            <div class="c3-user">
+              <div class="c3-avatar">JN</div>
+              <span class="c3-username">Jakub Nowicki</span>
+            </div>
+          </div>
+          <div class="c3-stats">
+            <div class="c3-stat"><div class="c3-stat-val">2,847</div><div class="c3-stat-lbl">km total</div></div>
+            <div class="c3-stat"><div class="c3-stat-val">312</div><div class="c3-stat-lbl">runs</div></div>
+          </div>
+          <div class="c3-section">
+            <div class="c3-section-lbl">Year</div>
+            <div class="c3-year-pills">
+              <div class="c3-pill active">All</div>
+              <div class="c3-pill">2024</div>
+              <div class="c3-pill">2023</div>
+              <div class="c3-pill">2022</div>
+            </div>
+          </div>
+          <div class="c3-city-list">
+            <div style="font-size:10px;color:#bbb;letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Cities</div>
+            <div class="c3-city active">
+              <div style="flex:1"><div style="display:flex;justify-content:space-between"><span class="c3-city-name">Warsaw</span><span class="c3-city-km">1,240 km</span></div><div class="c3-city-bar-wrap"><div class="c3-city-bar" style="width:100%"></div></div></div>
+            </div>
+            <div class="c3-city">
+              <div style="flex:1"><div style="display:flex;justify-content:space-between"><span class="c3-city-name">Kraków</span><span class="c3-city-km">680 km</span></div><div class="c3-city-bar-wrap"><div class="c3-city-bar" style="width:55%"></div></div></div>
+            </div>
+            <div class="c3-city">
+              <div style="flex:1"><div style="display:flex;justify-content:space-between"><span class="c3-city-name">Gdańsk</span><span class="c3-city-km">420 km</span></div><div class="c3-city-bar-wrap"><div class="c3-city-bar" style="width:34%"></div></div></div>
+            </div>
+            <div class="c3-city">
+              <div style="flex:1"><div style="display:flex;justify-content:space-between"><span class="c3-city-name">Wrocław</span><span class="c3-city-km">280 km</span></div><div class="c3-city-bar-wrap"><div class="c3-city-bar" style="width:23%"></div></div></div>
+            </div>
+            <div class="c3-city">
+              <div style="flex:1"><div style="display:flex;justify-content:space-between"><span class="c3-city-name">Berlin</span><span class="c3-city-km">140 km</span></div><div class="c3-city-bar-wrap"><div class="c3-city-bar" style="width:11%"></div></div></div>
+            </div>
+          </div>
+          <div class="c3-strava-badge">
+            <a href="#"><span class="c3-strava-badge-text">Powered by</span><span class="c3-strava-badge-logo">STRAVA</span></a>
+          </div>
+        </div>
+        <!-- map -->
+        <div class="c3-map">
+          <div class="c3-map-roads"></div>
+          <div class="c3-heat1"></div>
+          <div class="c3-heat2"></div>
+          <div class="c3-heat3"></div>
+          <div class="c3-heat4"></div>
+          <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 600 580" preserveAspectRatio="xMidYMid slice" opacity="0.25">
+            <path d="M 0 280 Q 120 200 240 240 T 480 220 T 600 280" stroke="#FC4C02" stroke-width="2" fill="none"/>
+            <path d="M 0 310 Q 160 240 280 280 T 520 260 T 600 310" stroke="#FC4C02" stroke-width="1.5" fill="none"/>
+            <path d="M 80 340 Q 240 270 360 310 T 600 300" stroke="#FC4C02" stroke-width="1.5" fill="none"/>
+          </svg>
+          <div class="c3-map-badge">Powered by Strava</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function show(i) {
+    document.querySelectorAll('.concept').forEach((c,j) => c.classList.toggle('active', j===i))
+    document.querySelectorAll('.tab').forEach((t,j) => t.classList.toggle('active', j===i))
+  }
+</script>
+</body>
+</html>

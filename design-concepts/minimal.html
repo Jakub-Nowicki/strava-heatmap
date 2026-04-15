@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>HeatRun — Minimal Concept</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0b0b0b; color: #fff; height: 100vh; overflow: hidden; }
+
+    /* ── MAP BACKGROUND ── */
+    .map {
+      position: fixed; inset: 0;
+      background: #0b0b0b;
+      z-index: 0;
+    }
+    .map-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 52px 52px;
+    }
+    .heat { position: absolute; border-radius: 50%; }
+    .h1 { width:380px;height:380px;background:radial-gradient(circle,rgba(252,76,2,0.45) 0%,transparent 70%);top:180px;left:38%; }
+    .h2 { width:260px;height:260px;background:radial-gradient(circle,rgba(252,76,2,0.3) 0%,transparent 70%);top:280px;left:52%; }
+    .h3 { width:200px;height:200px;background:radial-gradient(circle,rgba(252,120,2,0.2) 0%,transparent 70%);top:120px;left:60%; }
+    .h4 { width:300px;height:300px;background:radial-gradient(circle,rgba(252,76,2,0.2) 0%,transparent 70%);top:350px;left:28%; }
+    .h5 { width:160px;height:160px;background:radial-gradient(circle,rgba(252,76,2,0.35) 0%,transparent 70%);top:200px;left:66%; }
+    .routes { position:absolute;inset:0; }
+
+    /* ── COLLAPSIBLE SIDEBAR ── */
+    .sidebar {
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      width: 72px;
+      background: rgba(10,10,10,0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-right: 1px solid rgba(255,255,255,0.06);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 0;
+      gap: 6px;
+      transition: width 0.3s cubic-bezier(0.4,0,0.2,1);
+      overflow: hidden;
+    }
+    .sidebar.open {
+      width: 280px;
+      align-items: flex-start;
+      padding: 20px 0;
+    }
+
+    /* logo row */
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 20px;
+      width: 100%;
+      margin-bottom: 8px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: #FC4C02;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .logo-text {
+      font-size: 16px; font-weight: 700;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s 0.1s;
+    }
+    .sidebar.open .logo-text { opacity: 1; }
+
+    /* toggle button */
+    .toggle-btn {
+      width: 32px; height: 32px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 13px;
+      color: #666;
+      margin-left: auto;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .toggle-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+    /* nav icons */
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 0;
+      transition: background 0.15s;
+      position: relative;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.04); }
+    .nav-item.active { background: rgba(252,76,2,0.1); }
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 6px; bottom: 6px;
+      width: 3px;
+      background: #FC4C02;
+      border-radius: 0 2px 2px 0;
+    }
+    .nav-icon {
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      color: #555;
+      transition: color 0.15s;
+    }
+    .nav-item.active .nav-icon { color: #FC4C02; }
+    .nav-item:hover .nav-icon { color: #aaa; }
+    .nav-label {
+      font-size: 13px; font-weight: 500;
+      color: #555;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s 0.1s;
+    }
+    .sidebar.open .nav-label { opacity: 1; }
+    .nav-item.active .nav-label { color: #fff; }
+
+    .divider {
+      width: calc(100% - 40px);
+      margin: 6px 20px;
+      height: 1px;
+      background: rgba(255,255,255,0.05);
+      flex-shrink: 0;
+    }
+
+    /* expanded content */
+    .sidebar-content {
+      flex: 1;
+      width: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      padding: 0 16px;
+    }
+    .sidebar.open .sidebar-content {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .section-label {
+      font-size: 9px;
+      color: #444;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 10px;
+      padding: 0 4px;
+    }
+
+    /* stat row */
+    .stat-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .stat-box {
+      flex: 1;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .stat-val { font-size: 20px; font-weight: 700; color: #fff; }
+    .stat-lbl { font-size: 9px; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+    /* year pills */
+    .year-pills { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .pill {
+      padding: 4px 11px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: transparent;
+      color: #555;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .pill:hover { border-color: #FC4C02; color: #aaa; }
+    .pill.active { background: #FC4C02; border-color: #FC4C02; color: #fff; font-weight: 600; }
+
+    /* city list */
+    .city-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 16px; }
+    .city-item {
+      display: flex; align-items: center;
+      padding: 8px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.12s;
+      border: 1px solid transparent;
+    }
+    .city-item:hover { background: rgba(255,255,255,0.04); }
+    .city-item.active { background: rgba(252,76,2,0.08); border-color: rgba(252,76,2,0.15); }
+    .city-name { font-size: 12px; font-weight: 500; color: #888; flex: 1; }
+    .city-item.active .city-name { color: #fff; }
+    .city-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      color: #444;
+      margin-right: 6px;
+    }
+    .city-item.active .city-badge { background: rgba(252,76,2,0.15); color: #FC4C02; }
+    .city-km { font-size: 11px; color: #444; white-space: nowrap; }
+    .city-item.active .city-km { color: rgba(252,76,2,0.7); }
+
+    /* avatar at bottom */
+    .sidebar-footer {
+      width: 100%;
+      padding: 12px 20px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FC4C02, #ff7043);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .user-info { opacity: 0; transition: opacity 0.2s 0.1s; white-space: nowrap; }
+    .sidebar.open .user-info { opacity: 1; }
+    .user-name { font-size: 12px; font-weight: 600; color: #ccc; }
+    .user-sub { font-size: 10px; color: #444; }
+    .logout-btn {
+      margin-left: auto;
+      background: none;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      color: #444;
+      font-size: 12px;
+      padding: 3px 7px;
+      cursor: pointer;
+      transition: all 0.15s;
+      opacity: 0;
+      transition: opacity 0.2s 0.1s, color 0.15s, border-color 0.15s;
+    }
+    .sidebar.open .logout-btn { opacity: 1; }
+    .logout-btn:hover { color: #fff; border-color: #555; }
+
+    /* ── FLOATING TOP-RIGHT CARDS ── */
+    .float-cards {
+      position: fixed;
+      top: 20px; right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 50;
+    }
+    .float-card {
+      background: rgba(10,10,10,0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 12px 16px;
+    }
+    .record-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .record-row:last-child { margin-bottom: 0; }
+    .record-icon { font-size: 14px; }
+    .record-val { font-size: 15px; font-weight: 700; color: #fff; }
+    .record-sub { font-size: 10px; color: #444; }
+
+    /* sparkline card */
+    .spark-card-title { font-size: 9px; color: #444; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .spark-card-yr { color: #FC4C02; }
+
+    /* ── MAP ATTRIBUTION ── */
+    .map-attr {
+      position: fixed;
+      bottom: 12px; right: 12px;
+      font-size: 10px;
+      color: #333;
+      z-index: 50;
+    }
+
+    /* Strava badge */
+    .strava-badge {
+      position: fixed;
+      bottom: 12px;
+      left: 82px;
+      opacity: 0.5;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: #444;
+      transition: left 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .sidebar.open ~ .strava-badge { left: 290px; }
+    .strava-logo { font-size: 11px; font-weight: 800; color: #FC4C02; letter-spacing: 1.5px; }
+
+    /* scrollbar */
+    .sidebar-content::-webkit-scrollbar { width: 3px; }
+    .sidebar-content::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-content::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- MAP -->
+<div class="map">
+  <div class="map-grid"></div>
+  <div class="heat h1"></div>
+  <div class="heat h2"></div>
+  <div class="heat h3"></div>
+  <div class="heat h4"></div>
+  <div class="heat h5"></div>
+  <svg class="routes" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" opacity="0.18">
+    <path d="M 300 400 Q 450 320 560 370 T 780 350 T 950 400" stroke="#FC4C02" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <path d="M 320 430 Q 480 360 590 400 T 800 380 T 970 430" stroke="#FC4C02" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <path d="M 380 460 Q 520 390 640 430 T 860 420 T 1020 460" stroke="#FC4C02" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+    <path d="M 420 350 Q 560 280 680 330 T 900 310 T 1060 360" stroke="#ff7043" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <path d="M 350 490 Q 500 420 620 460 T 840 450" stroke="#FC4C02" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+    <path d="M 500 300 Q 620 240 740 280 T 960 270" stroke="#FC4C02" stroke-width="1" fill="none" stroke-linecap="round"/>
+  </svg>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <!-- logo -->
+  <div class="logo-row" onclick="toggleSidebar()">
+    <div class="logo-icon">⬡</div>
+    <span class="logo-text">HeatRun</span>
+    <div class="toggle-btn" id="toggleBtn">›</div>
+  </div>
+
+  <!-- nav icons -->
+  <div class="nav-item active">
+    <div class="nav-icon">🗺</div>
+    <span class="nav-label">Map</span>
+  </div>
+  <div class="nav-item" onclick="toggleSidebar()">
+    <div class="nav-icon">📊</div>
+    <span class="nav-label">Stats</span>
+  </div>
+  <div class="nav-item" onclick="toggleSidebar()">
+    <div class="nav-icon">⚡</div>
+    <span class="nav-label">Records</span>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- expanded content -->
+  <div class="sidebar-content">
+    <div class="section-label">Overview</div>
+    <div class="stat-row">
+      <div class="stat-box">
+        <div class="stat-val">2,847</div>
+        <div class="stat-lbl">km total</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val">312</div>
+        <div class="stat-lbl">runs</div>
+      </div>
+    </div>
+
+    <div class="section-label">Year</div>
+    <div class="year-pills">
+      <div class="pill active">All</div>
+      <div class="pill">2025</div>
+      <div class="pill">2024</div>
+      <div class="pill">2023</div>
+      <div class="pill">2022</div>
+    </div>
+
+    <div class="section-label">Cities</div>
+    <div class="city-list">
+      <div class="city-item active">
+        <span class="city-name">Warsaw</span>
+        <span class="city-badge">184</span>
+        <span class="city-km">1,240 km</span>
+      </div>
+      <div class="city-item">
+        <span class="city-name">Kraków</span>
+        <span class="city-badge">72</span>
+        <span class="city-km">680 km</span>
+      </div>
+      <div class="city-item">
+        <span class="city-name">Gdańsk</span>
+        <span class="city-badge">31</span>
+        <span class="city-km">420 km</span>
+      </div>
+      <div class="city-item">
+        <span class="city-name">Wrocław</span>
+        <span class="city-badge">18</span>
+        <span class="city-km">280 km</span>
+      </div>
+      <div class="city-item">
+        <span class="city-name">Berlin</span>
+        <span class="city-badge">7</span>
+        <span class="city-km">140 km</span>
+      </div>
+      <div class="city-item">
+        <span class="city-name">Vienna</span>
+        <span class="city-badge">3</span>
+        <span class="city-km">62 km</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- footer -->
+  <div class="sidebar-footer">
+    <div class="avatar">JN</div>
+    <div class="user-info">
+      <div class="user-name">Jakub Nowicki</div>
+      <div class="user-sub">312 runs · 2,847 km</div>
+    </div>
+    <button class="logout-btn">↪</button>
+  </div>
+</div>
+
+<!-- FLOATING RECORDS CARD -->
+<div class="float-cards">
+  <div class="float-card">
+    <div class="record-row">
+      <span class="record-icon">⚡</span>
+      <div>
+        <div class="record-val">32.4 km</div>
+        <div class="record-sub">Longest run · Morning Run</div>
+      </div>
+    </div>
+    <div class="record-row">
+      <span class="record-icon">📅</span>
+      <div>
+        <div class="record-val">284 km</div>
+        <div class="record-sub">Best month · Aug 2023</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sparkline card -->
+  <div class="float-card" style="width:220px">
+    <div class="spark-card-title">
+      <span>Monthly km</span>
+      <span class="spark-card-yr">2024</span>
+    </div>
+    <svg width="100%" height="44" viewBox="0 0 188 44">
+      <defs>
+        <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FC4C02" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="#FC4C02" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d="M 0 36 L 17 32 L 34 26 L 51 20 L 68 14 L 85 8 L 102 16 L 119 10 L 136 18 L 153 24 L 170 28 L 188 30 L 188 44 L 0 44 Z" fill="url(#sg)"/>
+      <path d="M 0 36 L 17 32 L 34 26 L 51 20 L 68 14 L 85 8 L 102 16 L 119 10 L 136 18 L 153 24 L 170 28 L 188 30" stroke="#FC4C02" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="85" cy="8" r="3" fill="#FC4C02"/>
+      <circle cx="119" cy="10" r="2.5" fill="#FC4C02"/>
+    </svg>
+    <div style="display:flex;justify-content:space-between;margin-top:4px">
+      <span style="font-size:9px;color:#333">J</span>
+      <span style="font-size:9px;color:#333">F</span>
+      <span style="font-size:9px;color:#333">M</span>
+      <span style="font-size:9px;color:#333">A</span>
+      <span style="font-size:9px;color:#FC4C02">M</span>
+      <span style="font-size:9px;color:#FC4C02">J</span>
+      <span style="font-size:9px;color:#333">J</span>
+      <span style="font-size:9px;color:#FC4C02">A</span>
+      <span style="font-size:9px;color:#333">S</span>
+      <span style="font-size:9px;color:#333">O</span>
+      <span style="font-size:9px;color:#333">N</span>
+      <span style="font-size:9px;color:#333">D</span>
+    </div>
+  </div>
+</div>
+
+<!-- Strava badge -->
+<div class="strava-badge" id="stravaBadge">
+  <span>Powered by</span>
+  <span class="strava-logo">STRAVA</span>
+</div>
+
+<div class="map-attr">© Mapbox © OpenStreetMap</div>
+
+<script>
+  let open = false;
+  const sidebar = document.getElementById('sidebar');
+  const btn = document.getElementById('toggleBtn');
+
+  function toggleSidebar() {
+    open = !open;
+    sidebar.classList.toggle('open', open);
+    btn.textContent = open ? '‹' : '›';
+  }
+
+  // city click
+  document.querySelectorAll('.city-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.city-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+    });
+  });
+
+  // year pills
+  document.querySelectorAll('.pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+
+  // nav items
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

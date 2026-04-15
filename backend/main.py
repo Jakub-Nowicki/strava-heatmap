@@ -30,14 +30,62 @@ REDIRECT_URI         = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/cal
 MAPBOX_TOKEN         = os.getenv("MAPBOX_TOKEN")
 WEBHOOK_VERIFY_TOKEN = os.getenv("STRAVA_WEBHOOK_VERIFY_TOKEN", "heatrun_webhook")
 
-# Temporary in-memory token store (one user, testing only)
-token_store: dict = {}
-
 
 @app.on_event("startup")
 async def startup():
     await create_tables()
 
+
+# ── Auth helpers ──────────────────────────────────────────────────────────────
+
+async def get_current_user(request: Request):
+    """Look up the authenticated user from the session cookie."""
+    athlete_id = request.cookies.get("athlete_id")
+    if not athlete_id:
+        return None
+    try:
+        pool = await get_pool()
+        user = await pool.fetchrow(
+            "SELECT id, firstname, lastname, access_token, refresh_token, profile "
+            "FROM users WHERE id = $1",
+            int(athlete_id),
+        )
+        return user
+    except Exception:
+        return None
+
+
+async def get_valid_token(user, pool) -> str | None:
+    """Return a valid access token for the given user, refreshing if expired."""
+    access_token = user["access_token"]
+    async with httpx.AsyncClient(timeout=10) as client:
+        test = await client.get(
+            "https://www.strava.com/api/v3/athlete",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        if test.status_code == 200:
+            return access_token
+        # Token expired — refresh it
+        resp = await client.post(
+            "https://www.strava.com/oauth/token",
+            data={
+                "client_id":     STRAVA_CLIENT_ID,
+                "client_secret": STRAVA_CLIENT_SECRET,
+                "grant_type":    "refresh_token",
+                "refresh_token": user["refresh_token"],
+            },
+        )
+        tokens = resp.json()
+        if "access_token" not in tokens:
+            return None
+        await pool.execute(
+            "UPDATE users SET access_token = $1, refresh_token = $2 WHERE id = $3",
+            tokens["access_token"], tokens["refresh_token"], user["id"],
+        )
+        return tokens["access_token"]
+
+
+# ── Pages ─────────────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -48,6 +96,8 @@ async def root():
     </body></html>
     """
 
+
+# ── OAuth ─────────────────────────────────────────────────────────────────────
 
 @app.get("/auth/login")
 async def login():
@@ -79,9 +129,6 @@ async def callback(code: str):
         return JSONResponse({"error": "Token exchange failed", "detail": data}, status_code=400)
 
     athlete = data.get("athlete", {})
-    token_store["access_token"]  = data["access_token"]
-    token_store["refresh_token"] = data["refresh_token"]
-    token_store["athlete"]       = athlete
 
     pool = await get_pool()
     await pool.execute(
@@ -102,34 +149,55 @@ async def callback(code: str):
     )
 
     response = RedirectResponse("https://feisty-exploration-production-f4e0.up.railway.app")
-    response.set_cookie("athlete_id", str(athlete["id"]), max_age=60*60*24*30, httponly=True, samesite="none", secure=True)
+    response.set_cookie(
+        "athlete_id", str(athlete["id"]),
+        max_age=60 * 60 * 24 * 30,
+        httponly=True,
+        samesite="none",
+        secure=True,
+    )
     return response
 
 
-@app.get("/test", response_class=HTMLResponse)
-async def test_page():
-    if "access_token" not in token_store:
-        return HTMLResponse("<p>Not connected. <a href='/auth/login'>Connect Strava</a></p>")
+@app.post("/auth/logout")
+async def logout(response: Response):
+    response.delete_cookie("athlete_id", samesite="none", secure=True)
+    return {"ok": True}
 
-    athlete  = token_store.get("athlete", {})
-    user_id  = athlete.get("id")
-    name     = f"{athlete.get('firstname', '')} {athlete.get('lastname', '')}".strip()
 
-    pool  = await get_pool()
-    count = await pool.fetchval("SELECT COUNT(*) FROM runs WHERE user_id = $1", user_id)
+# ── User ──────────────────────────────────────────────────────────────────────
 
-    return f"""
-    <html><body>
-        <h2>Connected as: {name}</h2>
-        <p>Your runs in database: <strong>{count}</strong></p>
-        <ul>
-            <li><a href="/api/import">Import all your runs from Strava → DB</a></li>
-            <li><a href="/geocode">Assign cities to runs (with progress bar)</a></li>
-            <li><a href="/api/stats">Stats: km per city + km per year</a></li>
-        </ul>
-    </body></html>
-    """
+@app.get("/api/me")
+async def get_me(request: Request):
+    user = await get_current_user(request)
+    if not user:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+    return {
+        "id":        user["id"],
+        "firstname": user["firstname"],
+        "lastname":  user["lastname"],
+        "profile":   user["profile"],
+    }
 
+
+# ── Account deletion (GDPR / Strava requirement) ──────────────────────────────
+
+@app.delete("/api/account")
+async def delete_account(request: Request, response: Response):
+    """Permanently delete all of the user's data and revoke their session."""
+    user = await get_current_user(request)
+    if not user:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    pool = await get_pool()
+    await pool.execute("DELETE FROM runs  WHERE user_id = $1", user["id"])
+    await pool.execute("DELETE FROM users WHERE id      = $1", user["id"])
+
+    response.delete_cookie("athlete_id", samesite="none", secure=True)
+    return {"ok": True}
+
+
+# ── Import ────────────────────────────────────────────────────────────────────
 
 async def fetch_page(client: httpx.AsyncClient, access_token: str, page: int) -> list:
     resp = await client.get(
@@ -143,64 +211,26 @@ async def fetch_page(client: httpx.AsyncClient, access_token: str, page: int) ->
     return [a for a in activities if a.get("type") == "Run"]
 
 
-async def get_valid_token() -> str | None:
-    """Return a valid access token, refreshing if expired."""
-    if "access_token" not in token_store:
-        return None
-    async with httpx.AsyncClient(timeout=10) as client:
-        test = await client.get(
-            "https://www.strava.com/api/v3/athlete",
-            headers={"Authorization": f"Bearer {token_store['access_token']}"},
-        )
-        if test.status_code == 200:
-            return token_store["access_token"]
-        # Token expired — refresh it
-        resp = await client.post(
-            "https://www.strava.com/oauth/token",
-            data={
-                "client_id":     STRAVA_CLIENT_ID,
-                "client_secret": STRAVA_CLIENT_SECRET,
-                "grant_type":    "refresh_token",
-                "refresh_token": token_store["refresh_token"],
-            },
-        )
-        tokens = resp.json()
-        if "access_token" not in tokens:
-            return None
-        token_store["access_token"]  = tokens["access_token"]
-        token_store["refresh_token"] = tokens["refresh_token"]
-        # Persist to DB
-        pool = await get_pool()
-        await pool.execute(
-            "UPDATE users SET access_token = $1, refresh_token = $2 WHERE id = $3",
-            tokens["access_token"], tokens["refresh_token"], token_store["athlete"]["id"],
-        )
-        return tokens["access_token"]
-
-
 @app.get("/api/import")
-async def import_runs():
-    if "access_token" not in token_store:
+async def import_runs(request: Request):
+    user = await get_current_user(request)
+    if not user:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
-    access_token = await get_valid_token()
+    pool         = await get_pool()
+    access_token = await get_valid_token(user, pool)
     if not access_token:
         return JSONResponse({"error": "Token refresh failed"}, status_code=401)
-
-    user_id = token_store["athlete"]["id"]
-    pool    = await get_pool()
 
     async with httpx.AsyncClient(timeout=30) as client:
         tasks   = [fetch_page(client, access_token, p) for p in range(1, 51)]
         results = await asyncio.gather(*tasks)
 
-    all_runs = []
-    for page_runs in results:
-        all_runs.extend(page_runs)
+    all_runs = [run for page_runs in results for run in page_runs]
 
     existing_ids = set(
         r["id"] for r in await pool.fetch(
-            "SELECT id FROM runs WHERE user_id = $1", user_id
+            "SELECT id FROM runs WHERE user_id = $1", user["id"]
         )
     )
 
@@ -210,7 +240,7 @@ async def import_runs():
         records = [
             (
                 run["id"],
-                user_id,
+                user["id"],
                 run["name"],
                 date.fromisoformat(run["start_date_local"][:10]),
                 int(run["start_date_local"][:4]),
@@ -221,15 +251,13 @@ async def import_runs():
             )
             for run in new_runs
         ]
-
         await pool.copy_records_to_table(
             "runs",
             records=records,
             columns=["id", "user_id", "name", "date", "year", "distance_km", "city", "country", "polyline"],
         )
 
-    total = await pool.fetchval("SELECT COUNT(*) FROM runs WHERE user_id = $1", user_id)
-
+    total = await pool.fetchval("SELECT COUNT(*) FROM runs WHERE user_id = $1", user["id"])
     return {
         "inserted":    len(new_runs),
         "skipped":     len(all_runs) - len(new_runs),
@@ -237,60 +265,21 @@ async def import_runs():
     }
 
 
-@app.get("/api/me")
-async def get_me(request: Request):
-    # If server restarted and token_store is empty, restore from DB via cookie
-    if "access_token" not in token_store:
-        athlete_id = request.cookies.get("athlete_id")
-        if athlete_id:
-            pool = await get_pool()
-            user = await pool.fetchrow(
-                "SELECT id, firstname, lastname, access_token, refresh_token FROM users WHERE id = $1",
-                int(athlete_id),
-            )
-            if user:
-                token_store["access_token"]  = user["access_token"]
-                token_store["refresh_token"] = user["refresh_token"]
-                token_store["athlete"] = {
-                    "id":        user["id"],
-                    "firstname": user["firstname"],
-                    "lastname":  user["lastname"],
-                    "profile":   user["profile"],
-                }
-
-    if "access_token" not in token_store:
-        return JSONResponse({"error": "Not authenticated"}, status_code=401)
-
-    athlete = token_store.get("athlete", {})
-    return {
-        "id":        athlete.get("id"),
-        "firstname": athlete.get("firstname"),
-        "lastname":  athlete.get("lastname"),
-        "profile":   athlete.get("profile"),
-    }
-
-
-@app.post("/auth/logout")
-async def logout(response: Response):
-    token_store.clear()
-    response.delete_cookie("athlete_id")
-    return {"ok": True}
-
+# ── Stats ─────────────────────────────────────────────────────────────────────
 
 @app.get("/api/stats")
-async def get_stats(year: int = None):
-    if "access_token" not in token_store:
+async def get_stats(request: Request, year: int = None):
+    user = await get_current_user(request)
+    if not user:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
-    user_id = token_store["athlete"]["id"]
-    pool    = await get_pool()
-
+    pool   = await get_pool()
     base   = "WHERE user_id = $1"
-    params = [user_id]
+    params = [user["id"]]
 
     if year:
         base  += " AND year = $2"
-        params = [user_id, year]
+        params = [user["id"], year]
 
     total = await pool.fetchrow(
         f"SELECT COUNT(*) as runs, ROUND(SUM(distance_km)::numeric, 2) as km FROM runs {base}",
@@ -308,7 +297,7 @@ async def get_stats(year: int = None):
 
     year_rows = await pool.fetch(
         "SELECT year, ROUND(SUM(distance_km)::numeric, 2) as km FROM runs WHERE user_id = $1 GROUP BY year ORDER BY year",
-        user_id,
+        user["id"],
     )
 
     return {
@@ -321,21 +310,19 @@ async def get_stats(year: int = None):
 
 
 @app.get("/api/cities")
-async def get_cities(year: int = None):
-    if "access_token" not in token_store:
+async def get_cities(request: Request, year: int = None):
+    user = await get_current_user(request)
+    if not user:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
-    user_id = token_store["athlete"]["id"]
-    pool    = await get_pool()
-
+    pool   = await get_pool()
     where  = "WHERE user_id = $1"
-    params = [user_id]
+    params = [user["id"]]
 
     if year:
         where += " AND year = $2"
         params.append(year)
 
-    # Fetch all runs (including NULL city = Unverified)
     rows = await pool.fetch(
         f"SELECT city, distance_km, polyline FROM runs {where}", *params
     )
@@ -358,7 +345,7 @@ async def get_cities(year: int = None):
             except Exception:
                 pass
 
-    result = []
+    result     = []
     unverified = None
 
     for city, data in sorted(cities.items(), key=lambda x: -x[1]["km"]):
@@ -376,7 +363,6 @@ async def get_cities(year: int = None):
         else:
             result.append(entry)
 
-    # Unverified always goes at the end
     if unverified:
         result.append(unverified)
 
@@ -384,15 +370,14 @@ async def get_cities(year: int = None):
 
 
 @app.get("/api/heatmap")
-async def get_heatmap(city: str = None, year: int = None):
-    if "access_token" not in token_store:
+async def get_heatmap(request: Request, city: str = None, year: int = None):
+    user = await get_current_user(request)
+    if not user:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
-    user_id = token_store["athlete"]["id"]
-    pool    = await get_pool()
-
+    pool       = await get_pool()
     conditions = ["user_id = $1", "polyline IS NOT NULL", "polyline != ''"]
-    params: list = [user_id]
+    params: list = [user["id"]]
 
     if city and city != "All":
         if city == "Unverified":
@@ -425,16 +410,15 @@ async def get_heatmap(city: str = None, year: int = None):
 
 
 @app.get("/api/records")
-async def get_records(year: int = None):
+async def get_records(request: Request, year: int = None):
     """Personal records: longest single run and best km month."""
-    if "access_token" not in token_store:
+    user = await get_current_user(request)
+    if not user:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
-    user_id = token_store["athlete"]["id"]
-    pool    = await get_pool()
-
+    pool   = await get_pool()
     where  = "WHERE user_id = $1"
-    params = [user_id]
+    params = [user["id"]]
     if year:
         where += " AND year = $2"
         params.append(year)
@@ -460,25 +444,25 @@ async def get_records(year: int = None):
             "city":        longest["city"]  if longest else None,
         },
         "best_month": {
-            "year":  best_month["year"]          if best_month else None,
-            "month": best_month["month"]         if best_month else None,
-            "km":    float(best_month["km"])     if best_month else None,
+            "year":  best_month["year"]      if best_month else None,
+            "month": best_month["month"]     if best_month else None,
+            "km":    float(best_month["km"]) if best_month else None,
         },
     }
 
 
 @app.get("/api/monthly")
-async def get_monthly(year: int = None):
+async def get_monthly(request: Request, year: int = None):
     """km per month (12-value array) for the given year (defaults to most recent)."""
-    if "access_token" not in token_store:
+    user = await get_current_user(request)
+    if not user:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
-    user_id = token_store["athlete"]["id"]
-    pool    = await get_pool()
+    pool = await get_pool()
 
     if not year:
         year = await pool.fetchval(
-            "SELECT MAX(year) FROM runs WHERE user_id = $1", user_id
+            "SELECT MAX(year) FROM runs WHERE user_id = $1", user["id"]
         )
 
     rows = await pool.fetch(
@@ -486,7 +470,7 @@ async def get_monthly(year: int = None):
         "ROUND(SUM(distance_km)::numeric, 1) as km "
         "FROM runs WHERE user_id = $1 AND year = $2 "
         "GROUP BY EXTRACT(MONTH FROM date) ORDER BY 1",
-        user_id, year,
+        user["id"], year,
     )
 
     months = [0.0] * 12
@@ -512,17 +496,35 @@ async def webhook_verify(
 
 @app.post("/webhook")
 async def webhook_event(request: Request):
-    """Handle incoming Strava activity events (new run → insert into DB)."""
+    """Handle incoming Strava activity events."""
     data = await request.json()
 
-    # Only care about new activities
-    if data.get("object_type") != "activity" or data.get("aspect_type") != "create":
-        return {"status": "ignored"}
-
+    object_type = data.get("object_type")
+    aspect_type = data.get("aspect_type")
     athlete_id  = data.get("owner_id")
-    activity_id = data.get("object_id")
+    object_id   = data.get("object_id")
 
     pool = await get_pool()
+
+    # ── Athlete deauthorized: delete all their data ───────────────────────────
+    if object_type == "athlete" and aspect_type == "delete":
+        await pool.execute("DELETE FROM runs  WHERE user_id = $1", athlete_id)
+        await pool.execute("DELETE FROM users WHERE id      = $1", athlete_id)
+        print(f"[WEBHOOK] Deauthorized: deleted all data for athlete {athlete_id}")
+        return {"status": "deauthorized"}
+
+    if object_type != "activity":
+        return {"status": "ignored"}
+
+    # ── Activity deleted: remove from DB ─────────────────────────────────────
+    if aspect_type == "delete":
+        await pool.execute("DELETE FROM runs WHERE id = $1", object_id)
+        print(f"[WEBHOOK] Activity deleted: {object_id}")
+        return {"status": "deleted"}
+
+    # ── New activity created ──────────────────────────────────────────────────
+    if aspect_type != "create":
+        return {"status": "ignored"}
 
     user = await pool.fetchrow(
         "SELECT access_token, refresh_token FROM users WHERE id = $1", athlete_id
@@ -534,7 +536,7 @@ async def webhook_event(request: Request):
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.get(
-            f"https://www.strava.com/api/v3/activities/{activity_id}",
+            f"https://www.strava.com/api/v3/activities/{object_id}",
             headers={"Authorization": f"Bearer {access_token}"},
         )
 
@@ -558,13 +560,9 @@ async def webhook_event(request: Request):
                 "UPDATE users SET access_token = $1, refresh_token = $2 WHERE id = $3",
                 tokens["access_token"], tokens["refresh_token"], athlete_id,
             )
-            # Sync in-memory store if this is the active session user
-            if token_store.get("athlete", {}).get("id") == athlete_id:
-                token_store["access_token"]  = tokens["access_token"]
-                token_store["refresh_token"] = tokens["refresh_token"]
 
             resp = await client.get(
-                f"https://www.strava.com/api/v3/activities/{activity_id}",
+                f"https://www.strava.com/api/v3/activities/{object_id}",
                 headers={"Authorization": f"Bearer {access_token}"},
             )
 
@@ -617,12 +615,17 @@ async def webhook_event(request: Request):
         except Exception as e:
             print(f"[WEBHOOK] Geocode failed: {e}")
 
-    return {"status": "ok", "activity_id": activity_id}
+    return {"status": "ok", "activity_id": object_id}
 
 
 # ── Geocoding ─────────────────────────────────────────────────────────────────
 
-async def fetch_city_for_coords(client: httpx.AsyncClient, semaphore: asyncio.Semaphore, lat: float, lng: float) -> str | None:
+async def fetch_city_for_coords(
+    client: httpx.AsyncClient,
+    semaphore: asyncio.Semaphore,
+    lat: float,
+    lng: float,
+) -> str | None:
     try:
         async with semaphore:
             resp = await client.get(
@@ -700,30 +703,29 @@ async def geocode_page():
 
 
 @app.get("/api/geocode/count")
-async def geocode_count():
+async def geocode_count(request: Request):
     """How many runs still need city assignment."""
-    if "access_token" not in token_store:
+    user = await get_current_user(request)
+    if not user:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
-    user_id = token_store["athlete"]["id"]
-    pool    = await get_pool()
-    count   = await pool.fetchval(
+    pool  = await get_pool()
+    count = await pool.fetchval(
         "SELECT COUNT(*) FROM runs WHERE user_id = $1 AND city IS NULL AND polyline IS NOT NULL AND polyline != ''",
-        user_id,
+        user["id"],
     )
     return {"count": count}
 
 
 @app.get("/api/geocode/stream")
-async def geocode_stream():
-    if "access_token" not in token_store:
+async def geocode_stream(request: Request):
+    user = await get_current_user(request)
+    if not user:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
-    user_id = token_store["athlete"]["id"]
-    pool    = await get_pool()
-
+    pool = await get_pool()
     rows = await pool.fetch(
         "SELECT id, polyline FROM runs WHERE user_id = $1 AND city IS NULL AND polyline IS NOT NULL AND polyline != ''",
-        user_id,
+        user["id"],
     )
 
     async def event_stream():
@@ -782,7 +784,10 @@ async def geocode_stream():
                     )
 
                 if calls_done % 5 == 0 or calls_done == total_calls:
-                    yield f"event: progress\ndata: {json.dumps({'done': runs_done, 'total': total_runs, 'api_calls': total_calls, 'calls_done': calls_done})}\n\n"
+                    yield (
+                        f"event: progress\ndata: "
+                        f"{json.dumps({'done': runs_done, 'total': total_runs, 'api_calls': total_calls, 'calls_done': calls_done})}\n\n"
+                    )
 
         yield f"event: complete\ndata: {json.dumps({'updated': runs_done, 'no_city': len(no_gps), 'api_calls': total_calls})}\n\n"
 

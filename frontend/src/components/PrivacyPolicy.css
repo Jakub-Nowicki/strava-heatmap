@@ -1,0 +1,148 @@
+.pp-page {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--bg);
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  padding: 48px 24px 80px;
+}
+
+.pp-container {
+  max-width: 680px;
+  width: 100%;
+}
+
+/* ── Back button ─────────────────────────────────────────── */
+.pp-back {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-family: var(--font);
+  margin-bottom: 40px;
+  display: inline-block;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.pp-back:hover {
+  color: var(--text);
+  border-color: #555;
+}
+
+.pp-back-bottom {
+  margin-top: 48px;
+  margin-bottom: 0;
+}
+
+/* ── Logo ─────────────────────────────────────────────────── */
+.pp-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.pp-logo-icon {
+  color: var(--accent);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.pp-logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text);
+  text-transform: uppercase;
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+.pp-title {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.pp-date {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 40px;
+  letter-spacing: 0.3px;
+}
+
+/* ── Sections ─────────────────────────────────────────────── */
+.pp-section {
+  margin-bottom: 36px;
+  padding-bottom: 36px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pp-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.pp-section h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+  letter-spacing: -0.2px;
+}
+
+.pp-section p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.75;
+  margin-bottom: 10px;
+}
+
+.pp-section p:last-child {
+  margin-bottom: 0;
+}
+
+.pp-section ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 0;
+}
+
+.pp-section li {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.65;
+  padding-left: 16px;
+  position: relative;
+}
+
+.pp-section li::before {
+  content: '–';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.pp-section a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pp-section a:hover {
+  opacity: 0.8;
+}
+
+.pp-section strong {
+  color: var(--text);
+  font-weight: 600;
+}
