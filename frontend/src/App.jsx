@@ -22,12 +22,26 @@ export default function App() {
   const [geocodePct, setGeocodePct]       = useState(null)
   const [showPrivacy, setShowPrivacy]     = useState(false)
 
-  // Check auth on load
+  // Check auth on load (or complete OAuth callback)
   useEffect(() => {
-    fetch(`${API}/api/me`, OPT)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => setUser(data))
-      .catch(() => setUser(null))
+    const params = new URLSearchParams(window.location.search)
+    const authToken = params.get('auth_token')
+
+    if (authToken) {
+      // Remove the token from the URL immediately
+      window.history.replaceState({}, '', window.location.pathname)
+      // Exchange the one-time token for a session cookie, then fetch user
+      fetch(`${API}/auth/session?token=${authToken}`, OPT)
+        .then(r => r.ok ? fetch(`${API}/api/me`, OPT) : Promise.reject())
+        .then(r => r.ok ? r.json() : null)
+        .then(data => setUser(data))
+        .catch(() => setUser(null))
+    } else {
+      fetch(`${API}/api/me`, OPT)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => setUser(data))
+        .catch(() => setUser(null))
+    }
   }, [])
 
   // Load everything once authenticated

@@ -70,7 +70,7 @@ export default function Login({ onShowPrivacy }) {
 
         <p className="login-note">
           Questions? Email{' '}
-          <a href="mailto:support@heatrun.app" className="login-note-link">support@heatrun.app</a>
+          <a href="mailto:heatmaprun@gmail.com" className="login-note-link">heatmaprun@gmail.com</a>
         </p>
       </div>
     </div>

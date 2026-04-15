@@ -1,4 +1,6 @@
 import os
+import time
+import secrets
 import asyncio
 import httpx
 import polyline
@@ -27,8 +29,13 @@ app.add_middleware(
 STRAVA_CLIENT_ID     = os.getenv("STRAVA_CLIENT_ID")
 STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
 REDIRECT_URI         = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/callback")
+FRONTEND_URL         = os.getenv("FRONTEND_URL", "http://localhost:5173")
 MAPBOX_TOKEN         = os.getenv("MAPBOX_TOKEN")
 WEBHOOK_VERIFY_TOKEN = os.getenv("STRAVA_WEBHOOK_VERIFY_TOKEN", "heatrun_webhook")
+
+# Short-lived one-time tokens: {token: (athlete_id, expires_at)}
+# Used to bridge the OAuth callback → frontend session activation.
+_auth_tokens: dict[str, tuple[int, float]] = {}
 
 
 @app.on_event("startup")
@@ -148,9 +155,35 @@ async def callback(code: str):
         athlete.get("profile"),
     )
 
-    response = RedirectResponse("https://feisty-exploration-production-f4e0.up.railway.app")
+    # Generate a short-lived one-time token.
+    # The frontend will exchange this token for a session cookie via /auth/session.
+    # This avoids cross-origin cookie issues where browsers block cookies set
+    # during a redirect response across different subdomains.
+    token = secrets.token_urlsafe(32)
+    _auth_tokens[token] = (athlete["id"], time.time() + 300)  # 5-minute TTL
+    return RedirectResponse(f"{FRONTEND_URL}?auth_token={token}")
+
+
+@app.get("/auth/session")
+async def activate_session(token: str):
+    """Exchange a one-time auth token for a session cookie.
+    Called by the frontend with credentials:'include' so the cookie is set
+    in a direct same-origin-style fetch, which works reliably in all browsers.
+    """
+    now = time.time()
+    # Purge expired tokens
+    expired = [k for k, v in list(_auth_tokens.items()) if v[1] < now]
+    for k in expired:
+        _auth_tokens.pop(k, None)
+
+    entry = _auth_tokens.pop(token, None)
+    if not entry:
+        return JSONResponse({"error": "Invalid or expired token"}, status_code=401)
+
+    athlete_id, _ = entry
+    response = JSONResponse({"ok": True})
     response.set_cookie(
-        "athlete_id", str(athlete["id"]),
+        "athlete_id", str(athlete_id),
         max_age=60 * 60 * 24 * 30,
         httponly=True,
         samesite="none",
